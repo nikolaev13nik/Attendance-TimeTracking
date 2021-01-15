@@ -29,6 +29,8 @@ import lombok.ToString;
 @Table(name = "users")
 @EqualsAndHashCode(of = "idUser")
 public class User {
+	
+	
 
 	@Id
 	Integer idUser;

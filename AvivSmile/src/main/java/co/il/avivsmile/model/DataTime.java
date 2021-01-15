@@ -28,6 +28,7 @@ import lombok.ToString;
 @Table(name = "hours")
 @EqualsAndHashCode(of = "id")
 public class DataTime {
+	
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.AUTO)

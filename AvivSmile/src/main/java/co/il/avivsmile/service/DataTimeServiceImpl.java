@@ -125,8 +125,11 @@ public class DataTimeServiceImpl implements DataTimeService {
 		query.setParameter(1,idUser);
 		query.setParameter("start", localDateStart);
 		query.setParameter("finish", localDateFinish);
-		Long count=query.getResultList().get(0);	
-		return count;
+		Long res=(Long) query.getResultList().get(0);
+		if (res==null) {
+			return 0l;
+		}
+		return res;
 	}
 
 	@Override
@@ -137,8 +140,12 @@ public class DataTimeServiceImpl implements DataTimeService {
 		Query query=em.createQuery("select SUM(datediff(minute,h.start,h.finish)) from DataTime h where id_user=?1 and date BETWEEN :start and :finish");
 				query.setParameter(1, idUser);
 				query.setParameter("start", localDateStart);
-				query.setParameter("finish", localDateFinish);		
-		return (Long) query.getResultList().get(0);
+				query.setParameter("finish", localDateFinish);	
+		Long res=(Long) query.getResultList().get(0);
+		if (res==null) {
+			return 0l;
+		}
+		return res;
 	}
 
 	@Override
@@ -146,11 +153,15 @@ public class DataTimeServiceImpl implements DataTimeService {
 			LocalDate localDateFinish) {
 		 accountRepository.findById(idUser)
 				.orElseThrow(() -> new UserNotFoundException(idUser.toString()));
-Query query=em.createQuery("select SUM(datediff(minute,h.start,h.finish)-480) from DataTime h where id_user=?1 and (date BETWEEN :start and :finish) and datediff(minute,h.start,h.finish)>480");
+		                                                                                                  Query query=em.createQuery("select SUM(datediff(minute,h.start,h.finish)-480) from DataTime h where id_user=?1 and (date BETWEEN :start and :finish) and datediff(minute,h.start,h.finish)>480");
 		query.setParameter(1, idUser);
 		query.setParameter("start", localDateStart);
 		query.setParameter("finish", localDateFinish);
-		return (Long) query.getResultList().get(0);
+		Long res=(Long) query.getResultList().get(0);
+		if (res==null) {
+			return 0l;
+		}
+		return res;
 	}
 
 	
