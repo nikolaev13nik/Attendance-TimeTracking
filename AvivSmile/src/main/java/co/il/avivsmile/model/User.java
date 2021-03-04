@@ -37,18 +37,13 @@ public class User {
 	String firstName;
 	String lastName;
 	String password;
-	
-	
-	
-	
-	
 	@OneToMany(mappedBy = "user")
 	List<DataTime>records;
-	
-	
 	@Singular
 	@ElementCollection(fetch = FetchType.EAGER)
 	Set<String> roles;
+	
+	
 	
 	public boolean addRole(String role) {
 		return roles.add(role);

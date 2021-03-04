@@ -34,6 +34,7 @@ public class SecurityConfiguration extends WebSecurityConfigurerAdapter{
 		http.sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS );
 
 		http.authorizeRequests()
+								.antMatchers(HttpMethod.POST,"/actuator/shutdown").hasRole("ADMINISTRATOR")		
 
 								.antMatchers(HttpMethod.GET,"/record/**").hasRole("ADMINISTRATOR")
 								.antMatchers(HttpMethod.PUT,"/record/start/{idUser}").access("@customWebSecurity.checkStartFinishRecords(#idUser,authentication) or hasRole('ADMINISTRATOR')")

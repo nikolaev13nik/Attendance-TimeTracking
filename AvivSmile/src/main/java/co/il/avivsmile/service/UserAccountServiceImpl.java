@@ -14,7 +14,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 //import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-
 import co.il.avivsmile.dao.UserRepository;
 import co.il.avivsmile.dto.UserDto;
 import co.il.avivsmile.dto.UserEditDto;
@@ -24,19 +23,24 @@ import co.il.avivsmile.exceptions.UserExistsException;
 import co.il.avivsmile.exceptions.UserNotFoundException;
 import co.il.avivsmile.model.User;
 
-
-
 @Service
 public class UserAccountServiceImpl implements UserAccountService {
-	
-	@Autowired
-	UserRepository accountRepository;
-	
+
+//	@Autowired
+	final UserRepository accountRepository;
+
 //	@Autowired
 //	AccountConfiguration accountConfiguration;
-	
-	@Autowired
+
+//	@Autowired
 	PasswordEncoder passwordEncoder;
+
+	@Autowired
+	public UserAccountServiceImpl(UserRepository accountRepository, PasswordEncoder passwordEncoder) {
+		super();
+		this.accountRepository = accountRepository;
+		this.passwordEncoder = passwordEncoder;
+	}
 
 	@Override
 	public UserProfileDto register(UserRegisterDto userRegisterDto) {
@@ -45,44 +49,35 @@ public class UserAccountServiceImpl implements UserAccountService {
 		}
 		String hashPassword = passwordEncoder.encode(userRegisterDto.getPassword());
 //		String hashPassword = Base64.getEncoder().encodeToString(userRegisterDto.getPassword().getBytes());
-		User user = User.builder()
-									.idUser(userRegisterDto.getIdUser())
-									.password(hashPassword)
-									.firstName(userRegisterDto.getFirstName())
-									.lastName(userRegisterDto.getLastName())
-									.role("User")
-									.records(new ArrayList<>())
-									.build();
+		User user = User.builder().idUser(userRegisterDto.getIdUser()).password(hashPassword)
+				.firstName(userRegisterDto.getFirstName()).lastName(userRegisterDto.getLastName()).role("User")
+				.records(new ArrayList<>()).build();
 		accountRepository.save(user);
 		return userToUserProfileDto(user);
 	}
-	
+
 	private UserProfileDto userToUserProfileDto(User userAccount) {
-		return UserProfileDto.builder()
-				.idUser(userAccount.getIdUser())
-				.firstName(userAccount.getFirstName())
-				.lastName(userAccount.getLastName())
-				.roles(userAccount.getRoles())
-				.build();
+		return UserProfileDto.builder().idUser(userAccount.getIdUser()).firstName(userAccount.getFirstName())
+				.lastName(userAccount.getLastName()).roles(userAccount.getRoles()).build();
 	}
 
 	@Override
 	public UserProfileDto login(Integer idUser) {
-		User user = accountRepository.findById(idUser).get();		
+		User user = accountRepository.findById(idUser).get();
 		return userToUserProfileDto(user);
 	}
 
 	@Transactional
 	@Override
 	public UserProfileDto editUser(Integer idUser, UserEditDto userEditDto) {
-		User user = accountRepository.findById(idUser).get();	
+		User user = accountRepository.findById(idUser).get();
 		if (userEditDto.getFirstName() != null) {
 			user.setFirstName(userEditDto.getFirstName());
 		}
 		if (userEditDto.getLastName() != null) {
 			user.setLastName(userEditDto.getLastName());
 		}
-		if (userEditDto.getPassword()!=null) {
+		if (userEditDto.getPassword() != null) {
 			String hashPassword = passwordEncoder.encode(userEditDto.getPassword());
 			user.setPassword(hashPassword);
 		}
@@ -93,7 +88,8 @@ public class UserAccountServiceImpl implements UserAccountService {
 	@Transactional
 	@Override
 	public UserProfileDto removeUser(Integer idUser) {
-		User userAccount = accountRepository.findById(idUser).orElseThrow(() -> new UserNotFoundException(idUser.toString()));
+		User userAccount = accountRepository.findById(idUser)
+				.orElseThrow(() -> new UserNotFoundException(idUser.toString()));
 		accountRepository.deleteById(idUser);
 		return userToUserProfileDto(userAccount);
 	}
@@ -105,14 +101,13 @@ public class UserAccountServiceImpl implements UserAccountService {
 		String hashPassword = passwordEncoder.encode(password);
 		user.setPassword(hashPassword);
 		return true;
-		
+
 	}
 
 	@Transactional
 	@Override
 	public Set<String> addRole(Integer idUser, String role) {
-		User user = accountRepository.findById(idUser)
-				.orElseThrow(() -> new UserNotFoundException(idUser.toString()));
+		User user = accountRepository.findById(idUser).orElseThrow(() -> new UserNotFoundException(idUser.toString()));
 		user.addRole(role);
 		accountRepository.save(user);
 		return user.getRoles();
@@ -130,8 +125,8 @@ public class UserAccountServiceImpl implements UserAccountService {
 
 	@Override
 	public List<UserProfileDto> getAllUsers() {
-		List<User>listUsers=accountRepository.findAll();
-		return listUsers.stream().map(dto->userToUserProfileDto(dto)).collect(Collectors.toList());
+		List<User> listUsers = accountRepository.findAll();
+		return listUsers.stream().map(dto -> userToUserProfileDto(dto)).collect(Collectors.toList());
 	}
-	
+
 }

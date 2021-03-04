@@ -34,6 +34,8 @@ public class DataTime {
 	@GeneratedValue(strategy = GenerationType.AUTO)
 	Integer id;
 //	Integer idUser;
+	
+	
 	@JsonFormat(pattern = "yyyy-MM-dd")
 	LocalDate date;
 	@JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
