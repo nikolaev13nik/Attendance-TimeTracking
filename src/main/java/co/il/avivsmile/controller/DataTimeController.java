@@ -2,92 +2,136 @@ package co.il.avivsmile.controller;
 
 import java.time.LocalDate;
 import java.util.List;
-
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.format.annotation.DateTimeFormat.ISO;
-import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import co.il.avivsmile.context.DataTimeContext;
 import co.il.avivsmile.dto.DataTimeDto;
 import co.il.avivsmile.dto.EditDataTimeUserDto;
-import co.il.avivsmile.service.DataTimeService;
+import co.il.avivsmile.service.strategy.AddRecordEndService;
+import co.il.avivsmile.service.strategy.AddRecordStartService;
+import co.il.avivsmile.service.strategy.CheckNullRowsService;
+import co.il.avivsmile.service.strategy.CountWorkedDaysService;
+import co.il.avivsmile.service.strategy.EditRecordService;
+import co.il.avivsmile.service.strategy.GetHoursBetweenService;
+import co.il.avivsmile.service.strategy.GetRecordsByDayService;
+import co.il.avivsmile.service.strategy.GetRecordsByMonthService;
+import co.il.avivsmile.service.strategy.GetOvertimeBetweenService;
+import co.il.avivsmile.service.strategy.RemoveRecordService;
+import lombok.RequiredArgsConstructor;
 
 @RequestMapping("/record")
 @RestController
+@RequiredArgsConstructor
 public class DataTimeController {
-	
-	@Autowired
-	DataTimeService service;
-	
-	
+
+	private final AddRecordStartService addRecordStartService;
+	private final AddRecordEndService addRecordEndService;
+	private final EditRecordService editRecordService;
+	private final GetRecordsByDayService getRecordsByDayService;
+	private final CountWorkedDaysService countWorkedDaysService;
+	private final GetRecordsByMonthService getRecordsByMonthService;
+	private final RemoveRecordService removeRecordService;
+	private final GetHoursBetweenService getHoursBetweenService;
+	private final GetOvertimeBetweenService getOvertimeBetweenService;
+	private final CheckNullRowsService checkNullRowsService;
+
 	@PutMapping("/start/{idUser}")
-	public DataTimeDto addRecordStart(@PathVariable Integer idUser) {
-		return service.addRecordStart(idUser);
-	}
-	
-	@PutMapping("/finish/{idUser}")
-	public DataTimeDto addRecordEnd(@PathVariable Integer idUser) {
-		return service.addRecordEnd(idUser);
-	}
-	
-	
-	@PostMapping()
-	public DataTimeDto editRecord(@RequestBody EditDataTimeUserDto dataTimeDto) {
-		return service.editRecord(dataTimeDto);
-	}
-	
-	@GetMapping("/records")
-	public List<DataTimeDto>getAllRecordsByDay(@RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate localDate){
-		return service.getAllRecordsByDay(localDate);
-	}
-	
-	@GetMapping("/range/records")
-	public List<DataTimeDto>getAllRecordsEmployeeByMoth(@RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate startDate,
-														@RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate finishDate,
-														@RequestParam Integer idUser){
-		return service.getAllRecordsEmployeeByMonth(idUser, startDate, finishDate);
-	}
-	
-	
-	
-	@GetMapping("/workdays")
-	public Long getCountWorkedDaysByEmployee(@RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate startDate,
-			@RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate finishDate,
-			@RequestParam Integer idUser){
-		return service.getCountWorkedDaysByEmployee(idUser, startDate, finishDate);
-	}
-	
-	@GetMapping("/hours")
-	public Long getAllHoursEmployeeBetweenDates(@RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate startDate,
-			@RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate finishDate,
-			@RequestParam Integer idUser){
-		return service.getAllHoursEmployeeBetweenDates(idUser, startDate, finishDate);
-		}
-	
-	@GetMapping("/overtime")
-	public Long getOvertimeEmployeeBetweenDates(@RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate startDate,
-			@RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate finishDate,
-			@RequestParam Integer idUser){
-		return service.getOvertimeEmployeeBetweenDates(idUser, startDate, finishDate);
-	}
-	
-	@GetMapping("/check")
-	public List<DataTimeDto> checkRowsForNull(@RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate startDate,
-								@RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate finishDate,
-								@RequestParam Integer idUser){
-		return service.checkRowsForNull(idUser, startDate, finishDate);
-	}
-	
-	@DeleteMapping("/remove/{id}")
-	public DataTimeDto removeRecord(@PathVariable Integer id) {
-		return service.removeRecord(id);
+	public ResponseEntity<DataTimeDto> addRecordStart(@PathVariable Integer idUser) {
+		DataTimeContext<DataTimeDto> context = DataTimeContext.<DataTimeDto>builder()
+				.idUser(idUser).build();
+		addRecordStartService.execute(context);
+		return ResponseEntity.ok(context.getResult());
 	}
 
+	@PutMapping("/finish/{idUser}")
+	public ResponseEntity<DataTimeDto> addRecordEnd(@PathVariable Integer idUser) {
+		DataTimeContext<DataTimeDto> context = DataTimeContext.<DataTimeDto>builder()
+				.idUser(idUser).build();
+		addRecordEndService.execute(context);
+		return ResponseEntity.ok(context.getResult());
+	}
+
+	@PostMapping()
+	public ResponseEntity<DataTimeDto> editRecord(@RequestBody EditDataTimeUserDto dataTimeDto) {
+		DataTimeContext<DataTimeDto> context = DataTimeContext.<DataTimeDto>builder()
+				.editDto(dataTimeDto).build();
+		editRecordService.execute(context);
+		return ResponseEntity.ok(context.getResult());
+	}
+
+	@GetMapping("/records")
+	public ResponseEntity<List<DataTimeDto>> getAllRecordsByDay(@RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate localDate) {
+		DataTimeContext<List<DataTimeDto>> context = DataTimeContext.<List<DataTimeDto>>builder()
+				.date(localDate).build();
+		getRecordsByDayService.execute(context);
+		return ResponseEntity.ok(context.getResult());
+	}
+
+	@GetMapping("/range/records")
+	public ResponseEntity<List<DataTimeDto>> getAllRecordsEmployeeByMonth(@RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate startDate,
+	                                                                      @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate finishDate,
+	                                                                      @RequestParam Integer idUser) {
+		DataTimeContext<List<DataTimeDto>> context = DataTimeContext.<List<DataTimeDto>>builder()
+				.idUser(idUser).startDate(startDate).finishDate(finishDate).build();
+		getRecordsByMonthService.execute(context);
+		return ResponseEntity.ok(context.getResult());
+	}
+
+	@GetMapping("/workdays")
+	public ResponseEntity<Long> getCountWorkedDaysByEmployee(@RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate startDate,
+	                                                         @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate finishDate,
+	                                                         @RequestParam Integer idUser) {
+		DataTimeContext<Long> context = DataTimeContext.<Long>builder()
+				.idUser(idUser).startDate(startDate).finishDate(finishDate).build();
+		countWorkedDaysService.execute(context);
+		return ResponseEntity.ok(context.getResult());
+	}
+
+	@GetMapping("/hours")
+	public ResponseEntity<Long> getAllHoursEmployeeBetweenDates(@RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate startDate,
+	                                                            @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate finishDate,
+	                                                            @RequestParam Integer idUser) {
+		DataTimeContext<Long> context = DataTimeContext.<Long>builder()
+				.idUser(idUser).startDate(startDate).finishDate(finishDate).build();
+		getHoursBetweenService.execute(context);
+		return ResponseEntity.ok(context.getResult());
+	}
+
+	@GetMapping("/overtime")
+	public ResponseEntity<Long> getOvertimeEmployeeBetweenDates(@RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate startDate,
+	                                                            @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate finishDate,
+	                                                            @RequestParam Integer idUser) {
+		DataTimeContext<Long> context = DataTimeContext.<Long>builder()
+				.idUser(idUser).startDate(startDate).finishDate(finishDate).build();
+		getOvertimeBetweenService.execute(context);
+		return ResponseEntity.ok(context.getResult());
+	}
+
+	@GetMapping("/check")
+	public ResponseEntity<List<DataTimeDto>> checkRowsForNull(@RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate startDate,
+	                                                          @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate finishDate,
+	                                                          @RequestParam Integer idUser) {
+		DataTimeContext<List<DataTimeDto>> context = DataTimeContext.<List<DataTimeDto>>builder()
+				.idUser(idUser).startDate(startDate).finishDate(finishDate).build();
+		checkNullRowsService.execute(context);
+		return ResponseEntity.ok(context.getResult());
+	}
+
+	@DeleteMapping("/remove/{id}")
+	public ResponseEntity<DataTimeDto> removeRecord(@PathVariable Integer id) {
+		DataTimeContext<DataTimeDto> context = DataTimeContext.<DataTimeDto>builder()
+				.recordId(id).build();
+		removeRecordService.execute(context);
+		return ResponseEntity.ok(context.getResult());
+	}
 }

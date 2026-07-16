@@ -20,10 +20,10 @@ public interface UserAccountService {
 	UserProfileDto removeUser(Integer idUser);
 	
 	boolean changePassword(Integer idUser, String password);
-	
-	Set<String> addRole(Integer idUser, String role);
-	
-	Set<String> removeRole(Integer idUser, String role);
+
+	UserProfileDto addRole(Integer idUser, String role);
+
+	UserProfileDto removeRole(Integer idUser, String role);
 
 	List<UserProfileDto>getAllUsers();
 }

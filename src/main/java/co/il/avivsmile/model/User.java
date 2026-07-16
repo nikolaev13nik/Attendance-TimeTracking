@@ -3,14 +3,12 @@ package co.il.avivsmile.model;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-
-import javax.persistence.ElementCollection;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.Id;
-import javax.persistence.OneToMany;
-import javax.persistence.Table;
-
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 import lombok.*;
 
 @ToString
@@ -30,12 +28,12 @@ public class User {
 	String password;
 
 	@OneToMany(mappedBy = "user")
-	List<DataTime>records;
+	List<DataTime> records;
 
 	@Singular
 	@ElementCollection(fetch = FetchType.EAGER)
 	Set<String> roles;
-	
+
 	public boolean addRole(String role) {
 		return roles.add(role);
 	}
@@ -50,7 +48,6 @@ public class User {
 		this.lastName = lastName;
 		this.password = password;
 		this.roles = roles;
-		this.records=new ArrayList<>();
+		this.records = new ArrayList<>();
 	}
-	
 }
