@@ -38,3 +38,7 @@ build/
 
 ### macOS ###
 .DS_Store
+
+*.env
+secret.txt
+secret.properties

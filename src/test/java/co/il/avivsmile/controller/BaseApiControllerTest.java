@@ -2,6 +2,8 @@ package co.il.avivsmile.controller;
 
 import java.time.LocalDateTime;
 import java.util.List;
+
+import co.il.avivsmile.security.dto.LoginRequestDto;
 import org.flywaydb.test.FlywayTestExecutionListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -69,23 +71,28 @@ public abstract class BaseApiControllerTest {
 
     /** Helper to send HTTP requests with optional Basic Authentication */
     protected ResponseEntity<String> send(
-            HttpMethod method,
-            String path,
-            Object body,
-            Integer secureUser,
-            String securePass) {
+            HttpMethod method, String path, Object body, Integer secureUser, String securePass) {
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
 
-        if (secureUser != null && securePass != null) {
-            headers.setBasicAuth(secureUser.toString(), securePass);
+        if (secureUser != null ) {
+            headers.setBearerAuth(obtainToken(secureUser, securePass));
         }
+        Object payload = (body == null || body instanceof  String) ? body: objectMapper.writeValueAsString(body);
+        return rest.exchange(url(path), method, new HttpEntity<>(payload,headers), String.class);
+    }
 
-        HttpEntity<Object> entity = new HttpEntity<>(body, headers);
-        String url = "http://localhost:" + port + path;
+    protected String url(String path){
+        return "http://localhost:" + port + path;
+    }
 
-        return rest.exchange(url, method, entity, String.class);
+    private String obtainToken(Integer secureUser, String securePass) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        String payload = objectMapper.writeValueAsString(new LoginRequestDto(secureUser,securePass));
+        ResponseEntity<String>response = rest.exchange(url("/account/login"),HttpMethod.POST,new HttpEntity<>(payload,headers),String.class);
+        return json(response).path("token").asString();
     }
 
     /** Deserialize the response body into a single Object */

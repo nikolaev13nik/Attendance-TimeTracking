@@ -22,13 +22,13 @@ import lombok.*;
 public class User {
 
 	@Id
-	Integer idUser;
-	String firstName;
-	String lastName;
-	String password;
+	private Integer idUser;
+	private String firstName;
+	private String lastName;
+	private String password;
 
 	@OneToMany(mappedBy = "user")
-	List<DataTime> records;
+	private List<DataTime> records;
 
 	@Singular
 	@ElementCollection(fetch = FetchType.EAGER)

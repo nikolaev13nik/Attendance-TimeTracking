@@ -1,11 +1,15 @@
 package co.il.avivsmile.controller;
 
 import java.util.List;
+
+import co.il.avivsmile.security.AuthenticationService;
+import co.il.avivsmile.security.dto.LoginRequestDto;
+import co.il.avivsmile.security.dto.LoginResponseDto;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import co.il.avivsmile.api.AccountApi;
 import co.il.avivsmile.dto.UserEditDto;
@@ -17,7 +21,9 @@ import co.il.avivsmile.service.UserAccountService;
 public class UserAccountController implements AccountApi {
 
 	@Autowired
-	UserAccountService userAccountService;
+	private  UserAccountService userAccountService;
+	@Autowired
+    private AuthenticationService authenticationService;
 
 	@Override
 	public ResponseEntity<UserProfileDto> register(UserRegisterDto userRegisterDto) {
@@ -50,7 +56,9 @@ public class UserAccountController implements AccountApi {
 	}
 
 	@PostMapping("/account/login")
-	public ResponseEntity<UserProfileDto> login(Authentication authentication) {
-		return ResponseEntity.ok(userAccountService.login(Integer.parseInt(authentication.getName())));
+	public ResponseEntity<LoginResponseDto> login(@RequestBody(required = false)LoginRequestDto request) {
+		LoginResponseDto response = authenticationService.authenticate(request);
+		response.setProfile(userAccountService.login(request.idUser()));
+		return ResponseEntity.ok(response);
 	}
 }

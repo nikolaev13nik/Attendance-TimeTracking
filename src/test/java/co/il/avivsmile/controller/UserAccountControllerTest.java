@@ -5,6 +5,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+
+import co.il.avivsmile.security.dto.LoginRequestDto;
+import co.il.avivsmile.security.dto.LoginResponseDto;
 import org.flywaydb.test.annotation.FlywayTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -50,22 +53,24 @@ class UserAccountControllerTest extends BaseApiControllerTest {
 
     @Test
     @FlywayTest
-    @DisplayName("POST /account/login with valid Basic auth returns the profile")
+    @DisplayName("POST /account/login with valid credentials  returns token and profile")
     void loginValidTest() {
-        ResponseEntity<String> response = send(HttpMethod.POST, LOGIN_URL, null, USER_ID, USER_PWD);
+        ResponseEntity<String> response = send(HttpMethod.POST, LOGIN_URL, new LoginRequestDto( USER_ID, USER_PWD),null,null);
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        UserProfileDto body = readObject(response, UserProfileDto.class);
-        assertEquals(USER_ID, body.getIdUser().intValue());
-        assertEquals("John", body.getFirstName());
-        assertEquals("Doe", body.getLastName());
-        assertTrue(body.getRoles().contains("User"));
+        LoginResponseDto body = readObject(response, LoginResponseDto.class);
+        assertEquals("Bearer", body.getTokenType());
+        UserProfileDto profile = body.getProfile();
+        assertEquals(USER_ID,profile.getIdUser().intValue());
+        assertEquals("John", profile.getFirstName());
+        assertEquals("Doe", profile.getLastName());
+        assertTrue(profile.getRoles().contains("User"));
     }
 
     @Test
     @FlywayTest
     @DisplayName("POST /account/login without credentials returns 401 UNAUTHORIZED")
     void loginAnonymousTest() {
-        ResponseEntity<String> response = send(HttpMethod.POST, LOGIN_URL, null, null, null);
+        ResponseEntity<String> response = send(HttpMethod.POST, LOGIN_URL, new LoginRequestDto(null,null), null, null);
         assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
     }
 
@@ -73,7 +78,7 @@ class UserAccountControllerTest extends BaseApiControllerTest {
     @FlywayTest
     @DisplayName("POST /account/login with a wrong password returns 401 UNAUTHORIZED")
     void loginWrongPasswordTest() {
-        ResponseEntity<String> response = send(HttpMethod.POST, LOGIN_URL, null, USER_ID, "wrong-password");
+        ResponseEntity<String> response = send(HttpMethod.POST, LOGIN_URL, new LoginRequestDto(USER_ID,"wrong-password"),null, null);
         assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
     }
 
