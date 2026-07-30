@@ -1,4 +1,4 @@
-package co.il.avivsmile;
+package att;
 
 
 
@@ -10,8 +10,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 
 
-import co.il.avivsmile.dao.UserRepository;
-import co.il.avivsmile.model.User;
+import att.dao.UserRepository;
+import att.model.User;
 
 @SpringBootApplication
 public class AvivSmileApplication implements CommandLineRunner{
