@@ -1,8 +1,9 @@
-package co.il.avivsmile.service.strategy;
+package att.service.strategy;
 
 import org.springframework.stereotype.Service;
-import co.il.avivsmile.service.base.DataTimeServiceBase;
-import co.il.avivsmile.context.DataTimeContext;
+
+import att.context.DataTimeContext;
+import att.service.base.DataTimeServiceBase;
 import jakarta.persistence.Query;
 
 @Service

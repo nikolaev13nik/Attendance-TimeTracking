@@ -1,10 +1,10 @@
-package co.il.avivsmile;
+package att;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class AvivSmileApplicationTests {
+class AttendanceTimeTrackingApplicationTests {
 
 	@Test
 	void contextLoads() {

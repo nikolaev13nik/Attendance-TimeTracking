@@ -1,11 +1,16 @@
-package co.il.avivsmile.context;
+package att.context;
 
-import lombok.*;
 import java.time.LocalDate;
 import java.util.List;
-import co.il.avivsmile.model.User;
-import co.il.avivsmile.model.DataTime;
-import co.il.avivsmile.dto.EditDataTimeUserDto;
+
+import att.dto.EditDataTimeUserDto;
+import att.model.DataTime;
+import att.model.User;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Getter
 @Setter

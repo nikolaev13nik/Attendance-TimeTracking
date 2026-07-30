@@ -1,11 +1,13 @@
-package co.il.avivsmile.mapper;
+package att.mapper;
 
 import org.mapstruct.Mapper;
+
 import java.util.List;
-import co.il.avivsmile.model.DataTime;
-import co.il.avivsmile.model.User;
-import co.il.avivsmile.dto.DataTimeDto;
-import co.il.avivsmile.dto.UserDto;
+
+import att.dto.DataTimeDto;
+import att.dto.UserDto;
+import att.model.DataTime;
+import att.model.User;
 
 @Mapper(componentModel = "spring")
 public interface DataTimeMapper {

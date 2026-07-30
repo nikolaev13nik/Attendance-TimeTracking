@@ -1,9 +1,10 @@
-package co.il.avivsmile.service.strategy;
+package att.service.strategy;
 
 import org.springframework.stereotype.Service;
-import co.il.avivsmile.service.base.DataTimeServiceBase;
-import co.il.avivsmile.dto.DataTimeDto;
-import co.il.avivsmile.context.DataTimeContext;
+
+import att.context.DataTimeContext;
+import att.dto.DataTimeDto;
+import att.service.base.DataTimeServiceBase;
 
 @Service
 public class RemoveRecordService extends DataTimeServiceBase<DataTimeDto> {

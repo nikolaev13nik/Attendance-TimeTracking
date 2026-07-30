@@ -1,11 +1,11 @@
-package co.il.avivsmile.security;
+package att.security;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Component;
 
-import co.il.avivsmile.dao.UserRepository;
+import att.dao.UserRepository;
 
 
 

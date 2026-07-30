@@ -1,6 +1,6 @@
-package co.il.avivsmile.service.base;
+package att.service.base;
 
-import co.il.avivsmile.context.DataTimeContext;
+import att.context.DataTimeContext;
 
 public interface BaseService<R> {
     void execute(DataTimeContext<R> context);

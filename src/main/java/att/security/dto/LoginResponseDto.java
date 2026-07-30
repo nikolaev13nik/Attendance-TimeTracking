@@ -1,6 +1,6 @@
-package co.il.avivsmile.security.dto;
+package att.security.dto;
 
-import co.il.avivsmile.dto.UserProfileDto;
+import att.dto.UserProfileDto;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 

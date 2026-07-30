@@ -1,9 +1,10 @@
-package co.il.avivsmile.dao;
+package att.dao;
 
 
 
 import org.springframework.data.jpa.repository.JpaRepository;
-import co.il.avivsmile.model.DataTime;
+
+import att.model.DataTime;
 
 public interface UserTimeRepository extends JpaRepository<DataTime, Integer>{
 	

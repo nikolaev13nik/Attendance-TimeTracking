@@ -1,20 +1,21 @@
-package co.il.avivsmile.controller;
+package att.controller;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import java.util.List;
-
-import co.il.avivsmile.security.dto.LoginRequestDto;
-import co.il.avivsmile.security.dto.LoginResponseDto;
 import org.flywaydb.test.annotation.FlywayTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import co.il.avivsmile.dto.UserProfileDto;
+
+import java.util.List;
+
+import att.dto.UserProfileDto;
+import att.security.dto.LoginRequestDto;
+import att.security.dto.LoginResponseDto;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class UserAccountControllerTest extends BaseApiControllerTest {
 

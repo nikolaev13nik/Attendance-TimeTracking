@@ -1,14 +1,16 @@
-package co.il.avivsmile.service.strategy;
+package att.service.strategy;
 
 import org.springframework.stereotype.Service;
-import co.il.avivsmile.service.base.DataTimeServiceBase;
-import co.il.avivsmile.dto.DataTimeDto;
-import co.il.avivsmile.context.DataTimeContext;
-import co.il.avivsmile.model.DataTime;
-import jakarta.persistence.TypedQuery;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+
+import att.context.DataTimeContext;
+import att.dto.DataTimeDto;
+import att.model.DataTime;
+import att.service.base.DataTimeServiceBase;
+import jakarta.persistence.TypedQuery;
 
 @Service
 public class AddRecordEndService extends DataTimeServiceBase<DataTimeDto> {

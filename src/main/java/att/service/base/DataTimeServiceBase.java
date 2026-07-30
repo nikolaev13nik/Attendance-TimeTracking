@@ -1,14 +1,15 @@
-package co.il.avivsmile.service.base;
+package att.service.base;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import co.il.avivsmile.context.DataTimeContext;
-import co.il.avivsmile.dao.UserRepository;
-import co.il.avivsmile.dao.UserTimeRepository;
-import co.il.avivsmile.exceptions.RecordNotFoundException;
-import co.il.avivsmile.exceptions.UserNotFoundException;
-import co.il.avivsmile.mapper.DataTimeMapper;
-import co.il.avivsmile.model.DataTime;
-import co.il.avivsmile.model.User;
+
+import att.context.DataTimeContext;
+import att.dao.UserRepository;
+import att.dao.UserTimeRepository;
+import att.exceptions.RecordNotFoundException;
+import att.exceptions.UserNotFoundException;
+import att.mapper.DataTimeMapper;
+import att.model.DataTime;
+import att.model.User;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;

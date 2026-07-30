@@ -1,21 +1,22 @@
-package co.il.avivsmile.controller;
+package att.controller;
 
-import java.util.List;
-
-import co.il.avivsmile.security.AuthenticationService;
-import co.il.avivsmile.security.dto.LoginRequestDto;
-import co.il.avivsmile.security.dto.LoginResponseDto;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
-import co.il.avivsmile.api.AccountApi;
-import co.il.avivsmile.dto.UserEditDto;
-import co.il.avivsmile.dto.UserProfileDto;
-import co.il.avivsmile.dto.UserRegisterDto;
-import co.il.avivsmile.service.UserAccountService;
+
+import java.util.List;
+
+import att.api.AccountApi;
+import att.dto.UserEditDto;
+import att.dto.UserProfileDto;
+import att.dto.UserRegisterDto;
+import att.security.AuthenticationService;
+import att.security.dto.LoginRequestDto;
+import att.security.dto.LoginResponseDto;
+import att.service.UserAccountService;
 
 @RestController
 public class UserAccountController implements AccountApi {

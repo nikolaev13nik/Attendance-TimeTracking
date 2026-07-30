@@ -1,18 +1,20 @@
-package co.il.avivsmile.service;
+package att.service;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import att.dao.UserRepository;
+import att.dto.UserEditDto;
+import att.dto.UserProfileDto;
+import att.dto.UserRegisterDto;
+import att.exceptions.UserExistsException;
+import att.exceptions.UserNotFoundException;
+import att.model.User;
 import jakarta.transaction.Transactional;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import co.il.avivsmile.dao.UserRepository;
-import co.il.avivsmile.dto.UserEditDto;
-import co.il.avivsmile.dto.UserProfileDto;
-import co.il.avivsmile.dto.UserRegisterDto;
-import co.il.avivsmile.exceptions.UserExistsException;
-import co.il.avivsmile.exceptions.UserNotFoundException;
-import co.il.avivsmile.model.User;
 
 @Service
 public class UserAccountServiceImpl implements UserAccountService {

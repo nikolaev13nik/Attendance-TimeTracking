@@ -1,32 +1,34 @@
-package co.il.avivsmile.controller;
+package att.controller;
 
-import java.time.LocalDate;
-import java.util.List;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.format.annotation.DateTimeFormat.ISO;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import co.il.avivsmile.context.DataTimeContext;
-import co.il.avivsmile.dto.DataTimeDto;
-import co.il.avivsmile.dto.EditDataTimeUserDto;
-import co.il.avivsmile.service.strategy.AddRecordEndService;
-import co.il.avivsmile.service.strategy.AddRecordStartService;
-import co.il.avivsmile.service.strategy.CheckNullRowsService;
-import co.il.avivsmile.service.strategy.CountWorkedDaysService;
-import co.il.avivsmile.service.strategy.EditRecordService;
-import co.il.avivsmile.service.strategy.GetHoursBetweenService;
-import co.il.avivsmile.service.strategy.GetRecordsByDayService;
-import co.il.avivsmile.service.strategy.GetRecordsByMonthService;
-import co.il.avivsmile.service.strategy.GetOvertimeBetweenService;
-import co.il.avivsmile.service.strategy.RemoveRecordService;
+
+import java.time.LocalDate;
+import java.util.List;
+
+import att.context.DataTimeContext;
+import att.dto.DataTimeDto;
+import att.dto.EditDataTimeUserDto;
+import att.service.strategy.AddRecordEndService;
+import att.service.strategy.AddRecordStartService;
+import att.service.strategy.CheckNullRowsService;
+import att.service.strategy.CountWorkedDaysService;
+import att.service.strategy.EditRecordService;
+import att.service.strategy.GetHoursBetweenService;
+import att.service.strategy.GetOvertimeBetweenService;
+import att.service.strategy.GetRecordsByDayService;
+import att.service.strategy.GetRecordsByMonthService;
+import att.service.strategy.RemoveRecordService;
 import lombok.RequiredArgsConstructor;
 
 @RequestMapping("/record")

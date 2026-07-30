@@ -1,4 +1,4 @@
-package co.il.avivsmile.security;
+package att.security;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
@@ -19,7 +19,7 @@ public class JwtService {
     private final long ttlSeconds;
 
     public JwtService(JwtEncoder jwtEncoder,
-                      @Value("${avivsmile.security.jwt.ttl-seconds}") long ttlSeconds) {
+                      @Value("${att.security.jwt.ttl-seconds}") long ttlSeconds) {
         this.jwtEncoder = jwtEncoder;
         this.ttlSeconds = ttlSeconds;
     }

@@ -1,8 +1,8 @@
-package co.il.avivsmile.dao;
+package att.dao;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import co.il.avivsmile.model.User;
+import att.model.User;
 
 public interface UserRepository extends JpaRepository<User, Integer>{
 

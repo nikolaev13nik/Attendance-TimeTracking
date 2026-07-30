@@ -1,9 +1,5 @@
-package co.il.avivsmile.controller;
+package att.controller;
 
-import java.time.LocalDateTime;
-import java.util.List;
-
-import co.il.avivsmile.security.dto.LoginRequestDto;
 import org.flywaydb.test.FlywayTestExecutionListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -18,14 +14,18 @@ import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.test.context.TestExecutionListeners;
 import org.springframework.web.client.DefaultResponseErrorHandler;
 import org.springframework.web.client.RestTemplate;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+import att.dao.UserRepository;
+import att.dao.UserTimeRepository;
+import att.dto.EditDataTimeUserDto;
+import att.dto.UserEditDto;
+import att.dto.UserRegisterDto;
+import att.security.dto.LoginRequestDto;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
-
-import co.il.avivsmile.dao.UserRepository;
-import co.il.avivsmile.dao.UserTimeRepository;
-import co.il.avivsmile.dto.UserEditDto;
-import co.il.avivsmile.dto.UserRegisterDto;
-import co.il.avivsmile.dto.EditDataTimeUserDto;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @TestExecutionListeners(

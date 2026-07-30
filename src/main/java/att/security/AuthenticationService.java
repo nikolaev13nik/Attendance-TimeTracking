@@ -1,7 +1,7 @@
-package co.il.avivsmile.security;
+package att.security;
 
-import co.il.avivsmile.security.dto.LoginRequestDto;
-import co.il.avivsmile.security.dto.LoginResponseDto;
+import att.security.dto.LoginRequestDto;
+import att.security.dto.LoginResponseDto;
 
 public interface AuthenticationService {
 

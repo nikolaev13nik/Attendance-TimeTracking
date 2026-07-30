@@ -1,6 +1,7 @@
-package co.il.avivsmile.security;
+package att.security;
 
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.security.autoconfigure.web.servlet.PathRequest;
 import org.springframework.context.annotation.Bean;
@@ -9,7 +10,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -27,13 +27,10 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtGra
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandlerImpl;
 import org.springframework.security.web.access.expression.WebExpressionAuthorizationManager;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.web.cors.CorsConfigurationSource;
+
+import java.nio.charset.StandardCharsets;
 
 import javax.crypto.spec.SecretKeySpec;
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
@@ -44,11 +41,11 @@ public class SecurityConfiguration {
 	private final String AUTHORITIES="authorities";
 
 	@Bean
-	SecretKeySpec jwtSecretKey(@Value("${avivsmile.security.jwt.secret}") String secret){
+	SecretKeySpec jwtSecretKey(@Value("${att.security.jwt.secret}") String secret) {
 		byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
 		if (keyBytes.length <32){
 			throw new IllegalStateException(
-					"avivsmile.security.jwt.seret must be at least 32 bytes for HS256");
+					"att.security.jwt.seret must be at least 32 bytes for HS256");
 
 		}
 		return new SecretKeySpec(keyBytes, "HmacSHA256");

@@ -1,7 +1,5 @@
-package co.il.avivsmile.security;
+package att.security;
 
-import java.util.Set;
-import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -9,10 +7,11 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
-import co.il.avivsmile.dao.UserRepository;
-import co.il.avivsmile.model.User;
+import java.util.Set;
+import java.util.stream.Collectors;
 
-
+import att.dao.UserRepository;
+import att.model.User;
 
 
 @Service

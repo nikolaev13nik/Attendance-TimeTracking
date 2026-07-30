@@ -1,13 +1,14 @@
-package co.il.avivsmile.security;
+package att.security;
 
-import co.il.avivsmile.exceptions.UserAuthenticationException;
-import co.il.avivsmile.security.dto.LoginRequestDto;
-import co.il.avivsmile.security.dto.LoginResponseDto;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.stereotype.Service;
+
+import att.exceptions.UserAuthenticationException;
+import att.security.dto.LoginRequestDto;
+import att.security.dto.LoginResponseDto;
 
 @Service
 public class AuthenticationServiceImpl implements AuthenticationService{

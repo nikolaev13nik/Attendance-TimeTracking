@@ -1,12 +1,10 @@
-package co.il.avivsmile.service;
+package att.service;
 
 import java.util.List;
-import java.util.Set;
 
-import co.il.avivsmile.dto.UserDto;
-import co.il.avivsmile.dto.UserEditDto;
-import co.il.avivsmile.dto.UserProfileDto;
-import co.il.avivsmile.dto.UserRegisterDto;
+import att.dto.UserEditDto;
+import att.dto.UserProfileDto;
+import att.dto.UserRegisterDto;
 
 
 public interface UserAccountService {

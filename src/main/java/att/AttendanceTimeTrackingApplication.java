@@ -1,7 +1,6 @@
 package att;
 
 
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
@@ -9,41 +8,33 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 
-
 import att.dao.UserRepository;
 import att.model.User;
 
 @SpringBootApplication
-public class AvivSmileApplication implements CommandLineRunner{
-	
-	@Autowired
-	UserRepository accountRepository;
+public class AttendanceTimeTrackingApplication implements CommandLineRunner {
 
-	@Autowired
-	PasswordEncoder passwordEncoder;
+    @Autowired
+    UserRepository accountRepository;
 
-	
-	public static void main(String[] args) {
-		SpringApplication.run(AvivSmileApplication.class, args);
-	}
+    @Autowired
+    PasswordEncoder passwordEncoder;
 
 
-	@Override
-	public void run(String... args) throws Exception {
-		if(!accountRepository.existsById(123456789)) {
-			String hashPassword = passwordEncoder.encode("admin"); 
-			User admin = User.builder()
-					.idUser(123456789)
-					.password(hashPassword)
-					.firstName("Super")
-					.lastName("Admin")
-					.role("User")
-					.role("Moderator")
-					.role("Administrator")
-					.build();
-			
-			accountRepository.save(admin);
-		}
-	}
+    public static void main(String[] args) {
+        SpringApplication.run(AttendanceTimeTrackingApplication.class, args);
+    }
+
+
+    @Override
+    public void run(String... args) throws Exception {
+        if (!accountRepository.existsById(123456789)) {
+            String hashPassword = passwordEncoder.encode("admin");
+            User admin = User.builder().idUser(123456789).password(hashPassword).firstName("Super")
+                    .lastName("Admin").role("User").role("Moderator").role("Administrator").build();
+
+            accountRepository.save(admin);
+        }
+    }
 
 }
