@@ -43,7 +43,7 @@ public class AttendanceTimeTrackingController implements TimeTrackingApi {
 	private final GetOvertimeBetweenService getOvertimeBetweenService;
 	private final CheckNullRowsService checkNullRowsService;
 
-	@PreAuthorize("hasRole('ADMINISTRATOR') || #idUser.toString() == authentication.name")
+	@PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name()) || #idUser.toString() == authentication.name")
 	public ResponseEntity<DataTimeDto> addRecordStart(@PathVariable Integer idUser) {
 		DataTimeContext<DataTimeDto> context = DataTimeContext.<DataTimeDto>builder()
 				.idUser(idUser).build();
@@ -51,7 +51,7 @@ public class AttendanceTimeTrackingController implements TimeTrackingApi {
 		return ResponseEntity.ok(context.getResult());
 	}
 
-	@PreAuthorize("hasRole('ADMINISTRATOR') || #idUser.toString() == authentication.name")
+	@PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name()) || #idUser.toString() == authentication.name")
 	public ResponseEntity<DataTimeDto> addRecordEnd(@PathVariable Integer idUser) {
 		DataTimeContext<DataTimeDto> context = DataTimeContext.<DataTimeDto>builder()
 				.idUser(idUser).build();
@@ -59,7 +59,7 @@ public class AttendanceTimeTrackingController implements TimeTrackingApi {
 		return ResponseEntity.ok(context.getResult());
 	}
 
-	@PreAuthorize("hasRole('ADMINISTRATOR')")
+	@PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")
 	public ResponseEntity<DataTimeDto> editRecord(@RequestBody EditDataTimeUserDto dataTimeDto) {
 		DataTimeContext<DataTimeDto> context = DataTimeContext.<DataTimeDto>builder()
 				.editDto(dataTimeDto).build();
@@ -67,7 +67,7 @@ public class AttendanceTimeTrackingController implements TimeTrackingApi {
 		return ResponseEntity.ok(context.getResult());
 	}
 
-	@PreAuthorize("hasRole('ADMINISTRATOR')")
+	@PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")
 	public ResponseEntity<List<DataTimeDto>> getAllRecordsByDay(@RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate localDate) {
 		DataTimeContext<List<DataTimeDto>> context = DataTimeContext.<List<DataTimeDto>>builder()
 				.date(localDate).build();
@@ -75,7 +75,7 @@ public class AttendanceTimeTrackingController implements TimeTrackingApi {
 		return ResponseEntity.ok(context.getResult());
 	}
 
-	@PreAuthorize("hasRole('ADMINISTRATOR')")
+	@PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")
 	public ResponseEntity<List<DataTimeDto>> getAllRecordsEmployeeByMonth(@RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate startDate,
 	                                                                      @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate finishDate,
 	                                                                      @RequestParam Integer idUser) {
@@ -85,7 +85,7 @@ public class AttendanceTimeTrackingController implements TimeTrackingApi {
 		return ResponseEntity.ok(context.getResult());
 	}
 
-	@PreAuthorize("hasRole('ADMINISTRATOR')")
+	@PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")
 	public ResponseEntity<Long> getCountWorkedDaysByEmployee(@RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate startDate,
 	                                                         @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate finishDate,
 	                                                         @RequestParam Integer idUser) {
@@ -95,7 +95,7 @@ public class AttendanceTimeTrackingController implements TimeTrackingApi {
 		return ResponseEntity.ok(context.getResult());
 	}
 
-	@PreAuthorize("hasRole('ADMINISTRATOR')")
+	@PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")
 	public ResponseEntity<Long> getAllHoursEmployeeBetweenDates(@RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate startDate,
 	                                                            @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate finishDate,
 	                                                            @RequestParam Integer idUser) {
@@ -105,7 +105,7 @@ public class AttendanceTimeTrackingController implements TimeTrackingApi {
 		return ResponseEntity.ok(context.getResult());
 	}
 
-	@PreAuthorize("hasRole('ADMINISTRATOR')")
+	@PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")
 	public ResponseEntity<Long> getOvertimeEmployeeBetweenDates(@RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate startDate,
 	                                                            @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate finishDate,
 	                                                            @RequestParam Integer idUser) {
@@ -115,7 +115,7 @@ public class AttendanceTimeTrackingController implements TimeTrackingApi {
 		return ResponseEntity.ok(context.getResult());
 	}
 
-	@PreAuthorize("hasRole('ADMINISTRATOR')")
+	@PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")
 	public ResponseEntity<List<DataTimeDto>> checkRowsForNull(@RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate startDate,
 	                                                          @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate finishDate,
 	                                                          @RequestParam Integer idUser) {
@@ -125,7 +125,7 @@ public class AttendanceTimeTrackingController implements TimeTrackingApi {
 		return ResponseEntity.ok(context.getResult());
 	}
 
-	@PreAuthorize("hasRole('ADMINISTRATOR')")
+	@PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")
 	public ResponseEntity<DataTimeDto> removeRecord(@PathVariable Integer id) {
 		DataTimeContext<DataTimeDto> context = DataTimeContext.<DataTimeDto>builder()
 				.recordId(id).build();
