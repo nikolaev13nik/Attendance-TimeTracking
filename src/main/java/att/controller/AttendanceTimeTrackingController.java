@@ -3,19 +3,16 @@ package att.controller;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.format.annotation.DateTimeFormat.ISO;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 import java.util.List;
 
+import att.api.TimeTrackingApi;
 import att.context.DataTimeContext;
 import att.dto.DataTimeDto;
 import att.dto.EditDataTimeUserDto;
@@ -31,10 +28,9 @@ import att.service.strategy.GetRecordsByMonthService;
 import att.service.strategy.RemoveRecordService;
 import lombok.RequiredArgsConstructor;
 
-@RequestMapping("/record")
 @RestController
 @RequiredArgsConstructor
-public class DataTimeController {
+public class AttendanceTimeTrackingController implements TimeTrackingApi {
 
 	private final AddRecordStartService addRecordStartService;
 	private final AddRecordEndService addRecordEndService;
@@ -47,7 +43,7 @@ public class DataTimeController {
 	private final GetOvertimeBetweenService getOvertimeBetweenService;
 	private final CheckNullRowsService checkNullRowsService;
 
-	@PutMapping("/start/{idUser}")
+	@PreAuthorize("hasRole('ADMINISTRATOR') || #idUser.toString() == authentication.name")
 	public ResponseEntity<DataTimeDto> addRecordStart(@PathVariable Integer idUser) {
 		DataTimeContext<DataTimeDto> context = DataTimeContext.<DataTimeDto>builder()
 				.idUser(idUser).build();
@@ -55,7 +51,7 @@ public class DataTimeController {
 		return ResponseEntity.ok(context.getResult());
 	}
 
-	@PutMapping("/finish/{idUser}")
+	@PreAuthorize("hasRole('ADMINISTRATOR') || #idUser.toString() == authentication.name")
 	public ResponseEntity<DataTimeDto> addRecordEnd(@PathVariable Integer idUser) {
 		DataTimeContext<DataTimeDto> context = DataTimeContext.<DataTimeDto>builder()
 				.idUser(idUser).build();
@@ -63,7 +59,7 @@ public class DataTimeController {
 		return ResponseEntity.ok(context.getResult());
 	}
 
-	@PostMapping()
+	@PreAuthorize("hasRole('ADMINISTRATOR')")
 	public ResponseEntity<DataTimeDto> editRecord(@RequestBody EditDataTimeUserDto dataTimeDto) {
 		DataTimeContext<DataTimeDto> context = DataTimeContext.<DataTimeDto>builder()
 				.editDto(dataTimeDto).build();
@@ -71,7 +67,7 @@ public class DataTimeController {
 		return ResponseEntity.ok(context.getResult());
 	}
 
-	@GetMapping("/records")
+	@PreAuthorize("hasRole('ADMINISTRATOR')")
 	public ResponseEntity<List<DataTimeDto>> getAllRecordsByDay(@RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate localDate) {
 		DataTimeContext<List<DataTimeDto>> context = DataTimeContext.<List<DataTimeDto>>builder()
 				.date(localDate).build();
@@ -79,7 +75,7 @@ public class DataTimeController {
 		return ResponseEntity.ok(context.getResult());
 	}
 
-	@GetMapping("/range/records")
+	@PreAuthorize("hasRole('ADMINISTRATOR')")
 	public ResponseEntity<List<DataTimeDto>> getAllRecordsEmployeeByMonth(@RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate startDate,
 	                                                                      @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate finishDate,
 	                                                                      @RequestParam Integer idUser) {
@@ -89,7 +85,7 @@ public class DataTimeController {
 		return ResponseEntity.ok(context.getResult());
 	}
 
-	@GetMapping("/workdays")
+	@PreAuthorize("hasRole('ADMINISTRATOR')")
 	public ResponseEntity<Long> getCountWorkedDaysByEmployee(@RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate startDate,
 	                                                         @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate finishDate,
 	                                                         @RequestParam Integer idUser) {
@@ -99,7 +95,7 @@ public class DataTimeController {
 		return ResponseEntity.ok(context.getResult());
 	}
 
-	@GetMapping("/hours")
+	@PreAuthorize("hasRole('ADMINISTRATOR')")
 	public ResponseEntity<Long> getAllHoursEmployeeBetweenDates(@RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate startDate,
 	                                                            @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate finishDate,
 	                                                            @RequestParam Integer idUser) {
@@ -109,7 +105,7 @@ public class DataTimeController {
 		return ResponseEntity.ok(context.getResult());
 	}
 
-	@GetMapping("/overtime")
+	@PreAuthorize("hasRole('ADMINISTRATOR')")
 	public ResponseEntity<Long> getOvertimeEmployeeBetweenDates(@RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate startDate,
 	                                                            @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate finishDate,
 	                                                            @RequestParam Integer idUser) {
@@ -119,7 +115,7 @@ public class DataTimeController {
 		return ResponseEntity.ok(context.getResult());
 	}
 
-	@GetMapping("/check")
+	@PreAuthorize("hasRole('ADMINISTRATOR')")
 	public ResponseEntity<List<DataTimeDto>> checkRowsForNull(@RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate startDate,
 	                                                          @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate finishDate,
 	                                                          @RequestParam Integer idUser) {
@@ -129,7 +125,7 @@ public class DataTimeController {
 		return ResponseEntity.ok(context.getResult());
 	}
 
-	@DeleteMapping("/remove/{id}")
+	@PreAuthorize("hasRole('ADMINISTRATOR')")
 	public ResponseEntity<DataTimeDto> removeRecord(@PathVariable Integer id) {
 		DataTimeContext<DataTimeDto> context = DataTimeContext.<DataTimeDto>builder()
 				.recordId(id).build();

@@ -1,0 +1,513 @@
+swagger: '2.0'
+
+info:
+  title: Aviv Smile Attendance Time Tracking
+  description: |
+    Services for work-time tracking and attendance management.
+  version: 1.0.0
+
+consumes:
+  - application/json
+produces:
+  - application/json
+
+tags:
+  - name: Time Tracking
+    description: Attendance and work-time tracking operations
+
+paths:
+
+  /record/start/{idUser}:
+    put:
+      summary: Starts a new work-time record for a user
+      operationId: addRecordStart
+      tags:
+        - Time Tracking
+      parameters:
+        - name: idUser
+          in: path
+          description: |
+            Unique identifier of the user
+          required: true
+          type: integer
+          format: int32
+      responses:
+        '200':
+          description: |
+            Created time tracking record
+          schema:
+            $ref: '#/definitions/DataTimeDto'
+        '400':
+          $ref: '#/responses/400-BadRequest'
+        '401':
+          $ref: '#/responses/401-Unauthorized'
+        '403':
+          $ref: '#/responses/403-Forbidden'
+        '500':
+          $ref: '#/responses/500-InternalServerError'
+
+  /record/finish/{idUser}:
+    put:
+      summary: Finishes an active work-time record for a user
+      operationId: addRecordEnd
+      tags:
+        - Time Tracking
+      parameters:
+        - name: idUser
+          in: path
+          description: |
+            Unique identifier of the user
+          required: true
+          type: integer
+          format: int32
+      responses:
+        '200':
+          description: |
+            Finished time tracking record
+          schema:
+            $ref: '#/definitions/DataTimeDto'
+        '400':
+          $ref: '#/responses/400-BadRequest'
+        '401':
+          $ref: '#/responses/401-Unauthorized'
+        '403':
+          $ref: '#/responses/403-Forbidden'
+        '500':
+          $ref: '#/responses/500-InternalServerError'
+
+  /record:
+    post:
+      summary: Edits an existing work-time record
+      operationId: editRecord
+      tags:
+        - Time Tracking
+      parameters:
+        - name: EditDataTimeUserDto
+          in: body
+          description: |
+            Details of the work-time record to edit
+          required: true
+          schema:
+            $ref: '#/definitions/EditDataTimeUserDto'
+      responses:
+        '200':
+          description: |
+            Updated time tracking record
+          schema:
+            $ref: '#/definitions/DataTimeDto'
+        '400':
+          $ref: '#/responses/400-BadRequest'
+        '401':
+          $ref: '#/responses/401-Unauthorized'
+        '403':
+          $ref: '#/responses/403-Forbidden'
+        '500':
+          $ref: '#/responses/500-InternalServerError'
+
+  /record/records:
+    get:
+      summary: Gets all work-time records for a specific date
+      operationId: getAllRecordsByDay
+      tags:
+        - Time Tracking
+      parameters:
+        - name: localDate
+          in: query
+          description: |
+            Date to retrieve records for (ISO format YYYY-MM-DD)
+          required: true
+          type: string
+          format: date
+      responses:
+        '200':
+          description: |
+            List of work-time records for the specified day
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/DataTimeDto'
+        '400':
+          $ref: '#/responses/400-BadRequest'
+        '401':
+          $ref: '#/responses/401-Unauthorized'
+        '403':
+          $ref: '#/responses/403-Forbidden'
+        '500':
+          $ref: '#/responses/500-InternalServerError'
+
+  /record/range/records:
+    get:
+      summary: Gets all work-time records for an employee within a date range
+      operationId: getAllRecordsEmployeeByMonth
+      tags:
+        - Time Tracking
+      parameters:
+        - name: startDate
+          in: query
+          description: |
+            Start date of the range (ISO format YYYY-MM-DD)
+          required: true
+          type: string
+          format: date
+        - name: finishDate
+          in: query
+          description: |
+            Finish date of the range (ISO format YYYY-MM-DD)
+          required: true
+          type: string
+          format: date
+        - name: idUser
+          in: query
+          description: |
+            Unique identifier of the user
+          required: true
+          type: integer
+          format: int32
+      responses:
+        '200':
+          description: |
+            List of work-time records for the specified range
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/DataTimeDto'
+        '400':
+          $ref: '#/responses/400-BadRequest'
+        '401':
+          $ref: '#/responses/401-Unauthorized'
+        '403':
+          $ref: '#/responses/403-Forbidden'
+        '500':
+          $ref: '#/responses/500-InternalServerError'
+
+  /record/workdays:
+    get:
+      summary: Counts total worked days for an employee within a date range
+      operationId: getCountWorkedDaysByEmployee
+      tags:
+        - Time Tracking
+      parameters:
+        - name: startDate
+          in: query
+          description: |
+            Start date of the range (ISO format YYYY-MM-DD)
+          required: true
+          type: string
+          format: date
+        - name: finishDate
+          in: query
+          description: |
+            Finish date of the range (ISO format YYYY-MM-DD)
+          required: true
+          type: string
+          format: date
+        - name: idUser
+          in: query
+          description: |
+            Unique identifier of the user
+          required: true
+          type: integer
+          format: int32
+      responses:
+        '200':
+          description: |
+            Total number of worked days
+          schema:
+            type: integer
+            format: int64
+        '400':
+          $ref: '#/responses/400-BadRequest'
+        '401':
+          $ref: '#/responses/401-Unauthorized'
+        '403':
+          $ref: '#/responses/403-Forbidden'
+        '500':
+          $ref: '#/responses/500-InternalServerError'
+
+  /record/hours:
+    get:
+      summary: Calculates total worked hours for an employee within a date range
+      operationId: getAllHoursEmployeeBetweenDates
+      tags:
+        - Time Tracking
+      parameters:
+        - name: startDate
+          in: query
+          description: |
+            Start date of the range (ISO format YYYY-MM-DD)
+          required: true
+          type: string
+          format: date
+        - name: finishDate
+          in: query
+          description: |
+            Finish date of the range (ISO format YYYY-MM-DD)
+          required: true
+          type: string
+          format: date
+        - name: idUser
+          in: query
+          description: |
+            Unique identifier of the user
+          required: true
+          type: integer
+          format: int32
+      responses:
+        '200':
+          description: |
+            Total number of worked hours
+          schema:
+            type: integer
+            format: int64
+        '400':
+          $ref: '#/responses/400-BadRequest'
+        '401':
+          $ref: '#/responses/401-Unauthorized'
+        '403':
+          $ref: '#/responses/403-Forbidden'
+        '500':
+          $ref: '#/responses/500-InternalServerError'
+
+  /record/overtime:
+    get:
+      summary: Calculates overtime hours for an employee within a date range
+      operationId: getOvertimeEmployeeBetweenDates
+      tags:
+        - Time Tracking
+      parameters:
+        - name: startDate
+          in: query
+          description: |
+            Start date of the range (ISO format YYYY-MM-DD)
+          required: true
+          type: string
+          format: date
+        - name: finishDate
+          in: query
+          description: |
+            Finish date of the range (ISO format YYYY-MM-DD)
+          required: true
+          type: string
+          format: date
+        - name: idUser
+          in: query
+          description: |
+            Unique identifier of the user
+          required: true
+          type: integer
+          format: int32
+      responses:
+        '200':
+          description: |
+            Total number of overtime hours
+          schema:
+            type: integer
+            format: int64
+        '400':
+          $ref: '#/responses/400-BadRequest'
+        '401':
+          $ref: '#/responses/401-Unauthorized'
+        '403':
+          $ref: '#/responses/403-Forbidden'
+        '500':
+          $ref: '#/responses/500-InternalServerError'
+
+  /record/check:
+    get:
+      summary: Checks and retrieves incomplete (null) records within a date range
+      operationId: checkRowsForNull
+      tags:
+        - Time Tracking
+      parameters:
+        - name: startDate
+          in: query
+          description: |
+            Start date of the range (ISO format YYYY-MM-DD)
+          required: true
+          type: string
+          format: date
+        - name: finishDate
+          in: query
+          description: |
+            Finish date of the range (ISO format YYYY-MM-DD)
+          required: true
+          type: string
+          format: date
+        - name: idUser
+          in: query
+          description: |
+            Unique identifier of the user
+          required: true
+          type: integer
+          format: int32
+      responses:
+        '200':
+          description: |
+            List of incomplete work-time records
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/DataTimeDto'
+        '400':
+          $ref: '#/responses/400-BadRequest'
+        '401':
+          $ref: '#/responses/401-Unauthorized'
+        '403':
+          $ref: '#/responses/403-Forbidden'
+        '500':
+          $ref: '#/responses/500-InternalServerError'
+
+  /record/remove/{id}:
+    delete:
+      summary: Removes a work-time record
+      operationId: removeRecord
+      tags:
+        - Time Tracking
+      parameters:
+        - name: id
+          in: path
+          description: |
+            Unique identifier of the time record to remove
+          required: true
+          type: integer
+          format: int32
+      responses:
+        '200':
+          description: |
+            Removed time tracking record
+          schema:
+            $ref: '#/definitions/DataTimeDto'
+        '400':
+          $ref: '#/responses/400-BadRequest'
+        '401':
+          $ref: '#/responses/401-Unauthorized'
+        '403':
+          $ref: '#/responses/403-Forbidden'
+        '500':
+          $ref: '#/responses/500-InternalServerError'
+
+
+definitions:
+
+  UserDto:
+    type: object
+    description: |
+      Basic user information embedded in a time record
+    properties:
+      idUser:
+        description: |
+          Unique identifier of the user
+        type: integer
+        format: int32
+      firstName:
+        description: |
+          First name of the user
+        type: string
+      lastName:
+        description: |
+          Last name of the user
+        type: string
+
+  DataTimeDto:
+    type: object
+    description: |
+      A single work-time record
+    properties:
+      id:
+        description: |
+          Unique identifier of the record
+        type: integer
+        format: int32
+      user:
+        $ref: '#/definitions/UserDto'
+      date:
+        description: |
+          Calendar day of the record
+        type: string
+        format: date
+      start:
+        description: |
+          Moment the record was started
+        type: string
+        format: date-time
+      finish:
+        description: |
+          Moment the record was finished
+        type: string
+        format: date-time
+
+  EditDataTimeUserDto:
+    type: object
+    description: |
+      Input for editing a work-time record's start and/or finish
+    properties:
+      id:
+        description: |
+          Unique identifier of the record to edit
+        type: integer
+        format: int32
+      start:
+        description: |
+          New start moment
+        type: string
+        format: date-time
+      finish:
+        description: |
+          New finish moment
+        type: string
+        format: date-time
+
+  ApiError:
+    type: object
+    description: |
+      Standard error payload
+    properties:
+      status:
+        description: |
+          HTTP status
+        type: string
+      error:
+        description: |
+          Short error description
+        type: string
+      message:
+        description: |
+          Human-readable explanation of the error
+        type: string
+      path:
+        description: |
+          Request path that produced the error
+        type: string
+
+
+responses:
+
+  400-BadRequest:
+    description: |
+      Bad Request - the server cannot process the request due to a client error.
+    schema:
+      $ref: '#/definitions/ApiError'
+
+  401-Unauthorized:
+    description: |
+      Unauthorized - valid authentication credentials are missing.
+    schema:
+      $ref: '#/definitions/ApiError'
+
+  403-Forbidden:
+    description: |
+      Forbidden - the authenticated user is not allowed to perform this operation.
+    schema:
+      $ref: '#/definitions/ApiError'
+
+  409-Conflict:
+    description: |
+      Conflict - the request conflicts with the current state of the resource.
+    schema:
+      $ref: '#/definitions/ApiError'
+
+  500-InternalServerError:
+    description: |
+      Internal Server Error - an unexpected condition prevented the request from completing.
+    schema:
+      $ref: '#/definitions/ApiError'

@@ -161,7 +161,7 @@
 						</goals>
 						<configuration>
 							<inputSpec>
-								${project.basedir}/src/main/resources/swagger-source/attendance-TimeTracking.yaml
+								${project.basedir}/src/main/resources/swagger-source/attendance-time-tracking.yaml
 							</inputSpec>
 							<generatorName>spring</generatorName>
 							<apiPackage>att.api</apiPackage>

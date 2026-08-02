@@ -11,6 +11,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import att.dao.UserRepository;
 import att.model.User;
 
+import static att.security.SecurityConstants.SecurityRoles.ADMINISTRATOR;
+import static att.security.SecurityConstants.SecurityRoles.MODERATOR;
+import static att.security.SecurityConstants.SecurityRoles.USER;
+
 @SpringBootApplication
 public class AttendanceTimeTrackingApplication implements CommandLineRunner {
 
@@ -31,7 +35,8 @@ public class AttendanceTimeTrackingApplication implements CommandLineRunner {
         if (!accountRepository.existsById(123456789)) {
             String hashPassword = passwordEncoder.encode("admin");
             User admin = User.builder().idUser(123456789).password(hashPassword).firstName("Super")
-                    .lastName("Admin").role("User").role("Moderator").role("Administrator").build();
+                    .lastName("Admin").role(USER.name()).role(MODERATOR.name())
+                    .role(ADMINISTRATOR.name()).build();
 
             accountRepository.save(admin);
         }
