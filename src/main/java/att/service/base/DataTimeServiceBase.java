@@ -3,8 +3,8 @@ package att.service.base;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import att.context.DataTimeContext;
+import att.dao.UserAttendanceTimeRepository;
 import att.dao.UserRepository;
-import att.dao.UserTimeRepository;
 import att.exceptions.RecordNotFoundException;
 import att.exceptions.UserNotFoundException;
 import att.mapper.DataTimeMapper;
@@ -20,7 +20,7 @@ public abstract class DataTimeServiceBase<R> implements BaseService<R> {
     protected UserRepository userRepository;
 
     @Autowired
-    protected UserTimeRepository timeRepository;
+    protected UserAttendanceTimeRepository timeRepository;
 
     @Autowired
     protected DataTimeMapper mapper;

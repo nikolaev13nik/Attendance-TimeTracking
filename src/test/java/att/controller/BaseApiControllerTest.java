@@ -4,7 +4,6 @@ import org.flywaydb.test.FlywayTestExecutionListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.context.annotation.Bean;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -17,12 +16,20 @@ import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
+import att.dao.UserAttendanceTimeRepository;
 import att.dao.UserRepository;
-import att.dao.UserTimeRepository;
+import att.dto.DataTimeDto;
 import att.dto.EditDataTimeUserDto;
+import att.model.DataTime;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+
+import static java.util.Optional.ofNullable;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @TestExecutionListeners(
@@ -37,8 +44,7 @@ public abstract class BaseApiControllerTest {
     @Autowired
     protected UserRepository userRepository;
 
-    @Autowired
-    protected UserTimeRepository timeRepository;
+    protected static final String UNAUTHORIZED = "UNAUTHORIZED";
 
     @Autowired
     protected ObjectMapper objectMapper;
@@ -50,6 +56,8 @@ public abstract class BaseApiControllerTest {
     protected static final Integer OTHER_USER_ID = 3;
     protected static final String OTHER_USER_PWD = "other123";
     protected static final String ACCESS_DENIED = "Access Denied";
+    @Autowired
+    protected UserAttendanceTimeRepository userAttendanceTimeRepository;
 
     protected static final String RECORD_URL = "/record";
     protected static final String START_URL = RECORD_URL + "/start/";
@@ -75,7 +83,6 @@ public abstract class BaseApiControllerTest {
     protected String jwtTokenAdministrator = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkiLCJleHAiOjIxMDEwMzI4MzEsImlhdCI6MTc4NTY3MjgzMSwiYXV0aG9yaXRpZXMiOlsiQURNSU4iLCJBRE1JTklTVFJBVE9SIiwiTU9ERVJBVE9SIiwiVVNFUiIsIkZBQ1RPUl9QQVNTV09SRCJdfQ.7v9mluTswU2F7GRdG5xKQxStTGn5bEy_5Dn74FYqShU";
     protected String jwtTokenUser = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjMiLCJleHAiOjIxMDEwMzI3MDIsImlhdCI6MTc4NTY3MjcwMiwiYXV0aG9yaXRpZXMiOlsiVVNFUiIsIkZBQ1RPUl9QQVNTV09SRCJdfQ.x_Jobfo63CL4eUxU6lBO11SyMG7ZdQeO5Z3S5wyjbLY";
 
-    @Bean
     private static RestTemplate createRestTemplate() {
             RestTemplate rt = new RestTemplate();
             rt.setErrorHandler(new DefaultResponseErrorHandler() {
@@ -87,9 +94,6 @@ public abstract class BaseApiControllerTest {
             return rt;
     }
 
-    /**
-     * Helper to send HTTP requests with optional Basic Authentication
-     */
     protected ResponseEntity<String> sendRequestWithAdmin(HttpMethod method, String path, Object requestBody) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -164,4 +168,31 @@ public abstract class BaseApiControllerTest {
                 .finish(finish)
                 .build();
     }
+
+    protected void verifyRecordStartEndApi(Integer rawId, Integer userId, LocalDateTime startTimeDate, LocalDateTime endTimeDate) {
+        Optional<DataTime> opUser = userAttendanceTimeRepository.findById(rawId);
+        assertTrue(opUser.isPresent());
+        assertEquals(userId, opUser.get().getUser().getIdUser());
+        ofNullable(startTimeDate).ifPresent(startTime -> assertEquals(startTime, opUser.get().getStart()));
+        ofNullable(endTimeDate).ifPresent(endTime -> assertEquals(endTime, opUser.get().getFinish()));
+    }
+
+    protected void verifyRecordStartEndResponseApi(DataTimeDto body, Integer userId, boolean isStartTime, boolean isEndTime, Integer expectedRecordId) {
+        ofNullable(expectedRecordId).ifPresent(recId -> assertEquals(recId, body.getId(), "Reason: should reuse today's open"));
+        assertNotNull(body.getUser());
+        assertNotNull(body.getUser().getIdUser());
+        assertNotNull(body.getId());
+        assertEquals(userId, body.getUser().getIdUser());
+        if (isStartTime) {
+            assertNotNull(body.getStart(), "Reason: start must be set");
+        }
+        if (isEndTime) {
+            assertNotNull(body.getFinish(), "Reason: finish must be set");
+        }
+    }
+
+    protected String range(String base, int idUser) {
+        return base + "?startDate=" + RANGE_START + "&finishDate=" + RANGE_END + "&idUser=" + idUser;
+    }
+
 }

@@ -3,7 +3,7 @@ package att.exceptions;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
-@ResponseStatus(code = HttpStatus.BAD_REQUEST,reason = "idrow is not correct")
+@ResponseStatus(code = HttpStatus.BAD_REQUEST, reason = "id row is not correct")
 public class RecordNotFoundException extends RuntimeException{
 
 	/**
