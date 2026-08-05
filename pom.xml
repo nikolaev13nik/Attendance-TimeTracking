@@ -108,6 +108,16 @@
 			<version>${flyway-spring-test.version}</version>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+			<groupId>
+				org.apache.commons
+			</groupId>
+			<artifactId>
+				commons-lang3
+			</artifactId>
+			<version>3.17.0
+			</version>
+		</dependency>
 	</dependencies>
 
 	<build>
@@ -163,6 +173,16 @@
 							<inputSpec>
 								${project.basedir}/src/main/resources/swagger-source/attendance-time-tracking.yaml
 							</inputSpec>
+							<typeMappings>
+								<typeMapping>
+									DateTime=OffsetDateTime
+								</typeMapping>
+							</typeMappings>
+							<importMappings>
+								<importMapping>
+									OffsetDateTime=java.time.OffsetDateTime
+								</importMapping>
+							</importMappings>
 							<generatorName>spring</generatorName>
 							<apiPackage>att.api</apiPackage>
 							<modelPackage>att.dto</modelPackage>
