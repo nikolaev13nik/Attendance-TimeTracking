@@ -20,13 +20,13 @@ import att.dto.SessionDataDto;
 import att.service.strategy.CheckNullRowsService;
 import att.service.strategy.CloseSessionService;
 import att.service.strategy.CountWorkedDaysService;
-import att.service.strategy.EditRecordService;
 import att.service.strategy.GetHoursBetweenService;
 import att.service.strategy.GetOvertimeBetweenService;
 import att.service.strategy.GetRecordsByDayService;
 import att.service.strategy.GetRecordsByMonthService;
 import att.service.strategy.OpenSessionService;
 import att.service.strategy.RemoveRecordService;
+import att.service.strategy.SessionChangeService;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -35,7 +35,7 @@ public class AttendanceTimeTrackingController implements TimeTrackingApi {
 
     private final OpenSessionService openSessionService;
     private final CloseSessionService closeSessionService;
-    private final EditRecordService editRecordService;
+    private final SessionChangeService sessionChangeService;
     private final GetRecordsByDayService getRecordsByDayService;
     private final CountWorkedDaysService countWorkedDaysService;
     private final GetRecordsByMonthService getRecordsByMonthService;
@@ -58,7 +58,7 @@ public class AttendanceTimeTrackingController implements TimeTrackingApi {
     public ResponseEntity<DataTimeDto> closeSession(@PathVariable Integer tenantId, @PathVariable Integer idUser,
                                                     @RequestBody SessionDataDto sessionDataDto) {
         DataTimeContext<SessionDataDto> context = DataTimeContext.<SessionDataDto>builder().idUser(idUser)
-                .closeSessionDate(sessionDataDto.getCloseSessionDate()).tenantId(tenantId)
+                .closeSessionDate(sessionDataDto.getCloseSessionDate()).tenantId(tenantId).task(sessionDataDto)
                 .workDate(sessionDataDto.getWorkDate()).build();
         closeSessionService.execute(context);
         return ResponseEntity.ok(context.getSingleResponseDataTimeDto());
@@ -69,7 +69,7 @@ public class AttendanceTimeTrackingController implements TimeTrackingApi {
                                                   @RequestBody EditDataTimeUserDto dataTimeDto) {
         DataTimeContext<EditDataTimeUserDto> context = DataTimeContext.<EditDataTimeUserDto>builder()
                 .editDto(dataTimeDto).build();
-        editRecordService.execute(context);
+        sessionChangeService.execute(context);
         return ResponseEntity.ok(context.getSingleResponseDataTimeDto());
     }
 

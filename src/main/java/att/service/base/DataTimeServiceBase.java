@@ -4,7 +4,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import att.context.DataTimeContext;
 import att.dao.SessionAttendanceTimeRepository;
-import att.exceptions.RecordNotFoundException;
+import att.exceptions.ErrorConstants;
+import att.exceptions.NotFoundException;
 import att.mapper.SessionRecordMapper;
 import att.model.DataTime;
 import jakarta.persistence.EntityManager;
@@ -51,7 +52,7 @@ public abstract class DataTimeServiceBase<R> implements BaseService<R> {
     }
 
     protected DataTime findRecordOrThrow(Integer id) {
-        //change error handling
-        return timeRepository.findById(id).orElseThrow(RecordNotFoundException::new);
+        return timeRepository.findById(id).orElseThrow(
+                () -> new NotFoundException(String.format(ErrorConstants.ATTENDANCE_NOT_FOUND_MSG, id)));
     }
 }

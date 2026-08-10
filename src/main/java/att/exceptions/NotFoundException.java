@@ -3,12 +3,15 @@ package att.exceptions;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
-@ResponseStatus(code = HttpStatus.BAD_REQUEST, reason = "id row is not correct")
-public class RecordNotFoundException extends RuntimeException{
+@ResponseStatus(code = HttpStatus.NOT_FOUND)
+public class NotFoundException extends RuntimeException {
 
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = 1L;
 
+	public NotFoundException(String msg) {
+		super(msg);
+	}
 }

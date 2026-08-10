@@ -35,7 +35,7 @@ public class DataTimeContext<T> {
     @Builder.Default
     private List<DataTime> userWorkSessionList = new ArrayList<>();
     @Builder.Default
-    private LocalDate now = LocalDate.now();
+    private LocalDate currentLocalDate = LocalDate.now();
 
     // output
     private Long totalHours;

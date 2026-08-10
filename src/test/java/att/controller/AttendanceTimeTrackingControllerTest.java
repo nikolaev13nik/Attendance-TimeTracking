@@ -14,6 +14,7 @@ import java.util.List;
 import att.dto.DataTimeDto;
 import att.dto.SessionDataDto;
 
+import static att.exceptions.ErrorConstants.ATTENDANCE_NOT_FOUND_MSG;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -76,6 +77,23 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
                 String.format("Reason: total count of attendance record is to be increased abd expect to be as:%s", recordCountBefore + 1));
     }
 
+    @Test
+    @FlywayTest
+    @DisplayName("start record ,the same user opens a record - positive")
+    void openNewAttendanceSession_missingOpenDateTest() {
+        long recordCountBefore = sessionAttendanceTimeRepository.count();
+        int tenant = 2;
+        OffsetDateTime openDate = OffsetDateTime.now();
+        SessionDataDto task = generateSessionDataDto(LocalDate.now(), null, null);
+        ResponseEntity<String> response = sendRequestWithAdmin(HttpMethod.PUT, OPEN_URL, USER_ID, tenant,
+                task);
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertTrue(errorMessage(response).contains("Request was rejected: JWT's tenant does not match to path"));
+        long countAfter = sessionAttendanceTimeRepository.count();
+        assertEquals(recordCountBefore, sessionAttendanceTimeRepository.count(),
+                String.format("Reason: total count of attendance record should not be changed ,expected:%s ,exist:%s",
+                        recordCountBefore, countAfter));
+    }
 
     @Test
     @FlywayTest
@@ -174,7 +192,7 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
                 null, 999,
                 createEditDataTimeUserDto(999999, null, newFinishTime));
         assertEquals (HttpStatus.BAD_REQUEST, response.getStatusCode());
-        assertEquals("id row is not correct", errorMessage(response));
+        assertEquals(String.format(ATTENDANCE_NOT_FOUND_MSG, 999999), errorMessage(response));
 
         long countAfter = sessionAttendanceTimeRepository.count();
         assertEquals(recordCountBefore, countAfter,
@@ -310,7 +328,7 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
         ResponseEntity<String> response = sendDeleteRequestWithAdmin(HttpMethod.DELETE, REMOVE_URL,
                 999999, 2, null);
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-        assertEquals("id row is not correct", errorMessage(response));
+        assertEquals(String.format(ATTENDANCE_NOT_FOUND_MSG, 999999), errorMessage(response));
 
         long countAfter = sessionAttendanceTimeRepository.count();
         assertEquals(recordCountBefore, countAfter,
