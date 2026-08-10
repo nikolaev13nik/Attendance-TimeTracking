@@ -1,17 +1,26 @@
 package att.mapper;
 
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
 import java.util.List;
 
+import att.context.DataTimeContext;
 import att.dto.DataTimeDto;
-import att.dto.UserDto;
+
 import att.model.DataTime;
-import att.model.User;
+
 
 @Mapper(componentModel = "spring")
-public interface DataTimeMapper {
+public interface SessionRecordMapper {
+
+
+    @Mapping(target = "userId", source = "idUser")
     DataTimeDto toDto(DataTime dataTime);
+
     List<DataTimeDto> toDtoList(List<DataTime> list);
-    UserDto toUserDto(User user);
+
+    DataTime mapToDateTime(DataTimeContext<?> context);
+
+
 }

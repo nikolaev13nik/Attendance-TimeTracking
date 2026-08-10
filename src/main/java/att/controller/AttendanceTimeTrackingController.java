@@ -16,15 +16,16 @@ import att.api.TimeTrackingApi;
 import att.context.DataTimeContext;
 import att.dto.DataTimeDto;
 import att.dto.EditDataTimeUserDto;
-import att.service.strategy.AddRecordEndService;
-import att.service.strategy.AddRecordStartService;
+import att.dto.SessionDataDto;
 import att.service.strategy.CheckNullRowsService;
+import att.service.strategy.CloseSessionService;
 import att.service.strategy.CountWorkedDaysService;
 import att.service.strategy.EditRecordService;
 import att.service.strategy.GetHoursBetweenService;
 import att.service.strategy.GetOvertimeBetweenService;
 import att.service.strategy.GetRecordsByDayService;
 import att.service.strategy.GetRecordsByMonthService;
+import att.service.strategy.OpenSessionService;
 import att.service.strategy.RemoveRecordService;
 import lombok.RequiredArgsConstructor;
 
@@ -32,104 +33,119 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AttendanceTimeTrackingController implements TimeTrackingApi {
 
-	private final AddRecordStartService addRecordStartService;
-	private final AddRecordEndService addRecordEndService;
-	private final EditRecordService editRecordService;
-	private final GetRecordsByDayService getRecordsByDayService;
-	private final CountWorkedDaysService countWorkedDaysService;
-	private final GetRecordsByMonthService getRecordsByMonthService;
-	private final RemoveRecordService removeRecordService;
-	private final GetHoursBetweenService getHoursBetweenService;
-	private final GetOvertimeBetweenService getOvertimeBetweenService;
-	private final CheckNullRowsService checkNullRowsService;
+    private final OpenSessionService openSessionService;
+    private final CloseSessionService closeSessionService;
+    private final EditRecordService editRecordService;
+    private final GetRecordsByDayService getRecordsByDayService;
+    private final CountWorkedDaysService countWorkedDaysService;
+    private final GetRecordsByMonthService getRecordsByMonthService;
+    private final RemoveRecordService removeRecordService;
+    private final GetHoursBetweenService getHoursBetweenService;
+    private final GetOvertimeBetweenService getOvertimeBetweenService;
+    private final CheckNullRowsService checkNullRowsService;
 
-	@PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name()) || #idUser.toString() == authentication.name")
-	public ResponseEntity<DataTimeDto> addRecordStart(@PathVariable Integer idUser) {
-		DataTimeContext<DataTimeDto> context = DataTimeContext.<DataTimeDto>builder()
-				.idUser(idUser).build();
-		addRecordStartService.execute(context);
-		return ResponseEntity.ok(context.getResult());
-	}
+    @PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name()) || #idUser.toString() == authentication.name")
+    public ResponseEntity<DataTimeDto> openSession(@PathVariable Integer tenantId, @PathVariable Integer idUser,
+                                                   @RequestBody SessionDataDto sessionDataDto) {
+        DataTimeContext<SessionDataDto> context = DataTimeContext.<SessionDataDto>builder().idUser(idUser)
+                .task(sessionDataDto).openSessionDate(sessionDataDto.getOpenSessionDate())
+                .tenantId(tenantId).workDate(sessionDataDto.getWorkDate()).build();
+        openSessionService.execute(context);
+        return ResponseEntity.ok(context.getSingleResponseDataTimeDto());
+    }
 
-	@PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name()) || #idUser.toString() == authentication.name")
-	public ResponseEntity<DataTimeDto> addRecordEnd(@PathVariable Integer idUser) {
-		DataTimeContext<DataTimeDto> context = DataTimeContext.<DataTimeDto>builder()
-				.idUser(idUser).build();
-		addRecordEndService.execute(context);
-		return ResponseEntity.ok(context.getResult());
-	}
+    @PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name()) || #idUser.toString() == authentication.name")
+    public ResponseEntity<DataTimeDto> closeSession(@PathVariable Integer tenantId, @PathVariable Integer idUser,
+                                                    @RequestBody SessionDataDto sessionDataDto) {
+        DataTimeContext<SessionDataDto> context = DataTimeContext.<SessionDataDto>builder().idUser(idUser)
+                .closeSessionDate(sessionDataDto.getCloseSessionDate()).tenantId(tenantId)
+                .workDate(sessionDataDto.getWorkDate()).build();
+        closeSessionService.execute(context);
+        return ResponseEntity.ok(context.getSingleResponseDataTimeDto());
+    }
 
-	@PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")
-	public ResponseEntity<DataTimeDto> editRecord(@RequestBody EditDataTimeUserDto dataTimeDto) {
-		DataTimeContext<DataTimeDto> context = DataTimeContext.<DataTimeDto>builder()
-				.editDto(dataTimeDto).build();
-		editRecordService.execute(context);
-		return ResponseEntity.ok(context.getResult());
-	}
+    @PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")
+    public ResponseEntity<DataTimeDto> editRecord(@PathVariable Integer tenantId,
+                                                  @RequestBody EditDataTimeUserDto dataTimeDto) {
+        DataTimeContext<EditDataTimeUserDto> context = DataTimeContext.<EditDataTimeUserDto>builder()
+                .editDto(dataTimeDto).build();
+        editRecordService.execute(context);
+        return ResponseEntity.ok(context.getSingleResponseDataTimeDto());
+    }
 
-	@PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")
-	public ResponseEntity<List<DataTimeDto>> getAllRecordsByDay(@RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate localDate) {
-		DataTimeContext<List<DataTimeDto>> context = DataTimeContext.<List<DataTimeDto>>builder()
-				.date(localDate).build();
-		getRecordsByDayService.execute(context);
-		return ResponseEntity.ok(context.getResult());
-	}
+    @PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")
+    public ResponseEntity<List<DataTimeDto>> getAllRecordsByDay(@PathVariable Integer tenantId,
+                                                                @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate localDate) {
+        DataTimeContext<Void> context = DataTimeContext.<Void>builder().workDate(localDate).build();
+        getRecordsByDayService.execute(context);
+        return ResponseEntity.ok(context.getResponseDataTimeDto());
+    }
 
-	@PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")
-	public ResponseEntity<List<DataTimeDto>> getAllRecordsEmployeeByMonth(@RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate startDate,
-	                                                                      @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate finishDate,
-	                                                                      @RequestParam Integer idUser) {
-		DataTimeContext<List<DataTimeDto>> context = DataTimeContext.<List<DataTimeDto>>builder()
-				.idUser(idUser).startDate(startDate).finishDate(finishDate).build();
-		getRecordsByMonthService.execute(context);
-		return ResponseEntity.ok(context.getResult());
-	}
+    @PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")
+    public ResponseEntity<List<DataTimeDto>> getAllRecordsEmployeeByMonth(@PathVariable Integer tenantId,
+                                                                          @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate startDate,
+                                                                          @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate endDate,
+                                                                          @RequestParam Integer idUser) {
+        DataTimeContext<Void> context = DataTimeContext.<Void>builder().idUser(idUser).startDate(startDate)
+                .tenantId(tenantId)
+                .endDate(endDate).build();
+        getRecordsByMonthService.execute(context);
+        return ResponseEntity.ok(context.getResponseDataTimeDto());
+    }
 
-	@PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")
-	public ResponseEntity<Long> getCountWorkedDaysByEmployee(@RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate startDate,
-	                                                         @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate finishDate,
-	                                                         @RequestParam Integer idUser) {
-		DataTimeContext<Long> context = DataTimeContext.<Long>builder()
-				.idUser(idUser).startDate(startDate).finishDate(finishDate).build();
-		countWorkedDaysService.execute(context);
-		return ResponseEntity.ok(context.getResult());
-	}
+    @PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")
+    public ResponseEntity<Long> getCountWorkedDaysByEmployee(@PathVariable Integer tenantId,
+                                                             @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate startDate,
+                                                             @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate endDate,
+                                                             @RequestParam Integer idUser) {
+        DataTimeContext<Void> context = DataTimeContext.<Void>builder().idUser(idUser).startDate(startDate)
+                .endDate(endDate).tenantId(tenantId).build();
+        countWorkedDaysService.execute(context);
+        return ResponseEntity.ok(context.getTotalDays());
+    }
 
-	@PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")
-	public ResponseEntity<Long> getAllHoursEmployeeBetweenDates(@RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate startDate,
-	                                                            @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate finishDate,
-	                                                            @RequestParam Integer idUser) {
-		DataTimeContext<Long> context = DataTimeContext.<Long>builder()
-				.idUser(idUser).startDate(startDate).finishDate(finishDate).build();
-		getHoursBetweenService.execute(context);
-		return ResponseEntity.ok(context.getResult());
-	}
+    @PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")
+    public ResponseEntity<Long> getAllHoursEmployeeBetweenDates(@PathVariable Integer tenantId,
+                                                                @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate startDate,
+                                                                @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate endDate,
+                                                                @RequestParam Integer idUser) {
+        DataTimeContext<Long> context = DataTimeContext.<Long>builder().idUser(idUser).startDate(startDate)
+                .tenantId(tenantId)
+                .endDate(endDate).build();
+        getHoursBetweenService.execute(context);
+        return ResponseEntity.ok(context.getTotalHours());
+    }
 
-	@PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")
-	public ResponseEntity<Long> getOvertimeEmployeeBetweenDates(@RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate startDate,
-	                                                            @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate finishDate,
-	                                                            @RequestParam Integer idUser) {
-		DataTimeContext<Long> context = DataTimeContext.<Long>builder()
-				.idUser(idUser).startDate(startDate).finishDate(finishDate).build();
-		getOvertimeBetweenService.execute(context);
-		return ResponseEntity.ok(context.getResult());
-	}
+    @PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")
+    public ResponseEntity<Long> getOvertimeEmployeeBetweenDates(@PathVariable Integer tenantId,
+                                                                @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate startDate,
+                                                                @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate endDate,
+                                                                @RequestParam Integer idUser) {
+        DataTimeContext<Long> context = DataTimeContext.<Long>builder().idUser(idUser).startDate(startDate)
+                .endDate(endDate).tenantId(tenantId).build();
+        getOvertimeBetweenService.execute(context);
+        return ResponseEntity.ok(context.getTotalOvertimeHours());
+    }
 
-	@PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")
-	public ResponseEntity<List<DataTimeDto>> checkRowsForNull(@RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate startDate,
-	                                                          @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate finishDate,
-	                                                          @RequestParam Integer idUser) {
-		DataTimeContext<List<DataTimeDto>> context = DataTimeContext.<List<DataTimeDto>>builder()
-				.idUser(idUser).startDate(startDate).finishDate(finishDate).build();
-		checkNullRowsService.execute(context);
-		return ResponseEntity.ok(context.getResult());
-	}
+    @PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")
+    public ResponseEntity<List<DataTimeDto>> checkRowsForNull(@PathVariable Integer tenantId,
+                                                              @PathVariable Integer idUser,
+                                                              @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate startDate,
+                                                              @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate endDate) {
+        DataTimeContext<List<DataTimeDto>> context =
+                DataTimeContext.<List<DataTimeDto>>builder().idUser(idUser).tenantId(tenantId)
+                        .startDate(startDate).endDate(endDate).build();
+        checkNullRowsService.execute(context);
+        return ResponseEntity.ok(context.getResponseDataTimeDto());
+    }
 
-	@PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")
-	public ResponseEntity<DataTimeDto> removeRecord(@PathVariable Integer id) {
-		DataTimeContext<DataTimeDto> context = DataTimeContext.<DataTimeDto>builder()
-				.recordId(id).build();
-		removeRecordService.execute(context);
-		return ResponseEntity.ok(context.getResult());
-	}
+    @PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")
+    public ResponseEntity<DataTimeDto> removeRecord(@PathVariable Integer tenantId, @PathVariable Integer id) {
+        DataTimeContext<DataTimeDto> context =
+                DataTimeContext.<DataTimeDto>builder().recordId(id).tenantId(tenantId).build();
+        removeRecordService.execute(context);
+        return ResponseEntity.ok(context.getSingleResponseDataTimeDto());
+    }
+
+
 }

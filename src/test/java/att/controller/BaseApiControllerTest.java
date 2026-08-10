@@ -14,14 +14,16 @@ import org.springframework.test.context.TestExecutionListeners;
 import org.springframework.web.client.DefaultResponseErrorHandler;
 import org.springframework.web.client.RestTemplate;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
-import att.dao.UserAttendanceTimeRepository;
-import att.dao.UserRepository;
+import att.dao.SessionAttendanceTimeRepository;
 import att.dto.DataTimeDto;
 import att.dto.EditDataTimeUserDto;
+import att.dto.SessionDataDto;
 import att.model.DataTime;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -42,33 +44,27 @@ public abstract class BaseApiControllerTest {
     protected int port;
 
     @Autowired
-    protected UserRepository userRepository;
-
-    protected static final String UNAUTHORIZED = "UNAUTHORIZED";
-
-    @Autowired
     protected ObjectMapper objectMapper;
-
-    protected static final Integer ADMIN_ID = 1;
-    protected static final String ADMIN_PWD = "admin123";
     protected static final Integer USER_ID = 2;
-    protected static final String USER_PWD = "user123";
     protected static final Integer OTHER_USER_ID = 3;
-    protected static final String OTHER_USER_PWD = "other123";
     protected static final String ACCESS_DENIED = "Access Denied";
-    @Autowired
-    protected UserAttendanceTimeRepository userAttendanceTimeRepository;
+    protected static final String BASE_SUFFIX_URL = "/attendance";
+    protected static final String TENANT_ID_URL = "/tenant/%s";
+    protected static final String EDIT_URL = BASE_SUFFIX_URL + "/sessionChange" + TENANT_ID_URL;
 
-    protected static final String RECORD_URL = "/record";
-    protected static final String START_URL = RECORD_URL + "/start/";
-    protected static final String FINISH_URL = RECORD_URL + "/finish/";
-    protected static final String RECORDS_URL = RECORD_URL + "/records";
-    protected static final String RANGE_RECORDS_URL = RECORD_URL + "/range/records";
-    protected static final String WORKDAYS_URL = RECORD_URL + "/workdays";
-    protected static final String HOURS_URL = RECORD_URL + "/hours";
-    protected static final String OVERTIME_URL = RECORD_URL + "/overtime";
-    protected static final String CHECK_URL = RECORD_URL + "/check";
-    protected static final String REMOVE_URL = RECORD_URL + "/remove/";
+    protected static final String OPEN_URL = BASE_SUFFIX_URL + "/openSession/tenant/%s/userId/%s";
+    protected static final String CLOSE_URL = BASE_SUFFIX_URL + "/closeSession/tenant/%s/userId/%s";
+
+    protected static final String RECORDS_URL = BASE_SUFFIX_URL + "/sessions" + TENANT_ID_URL;
+    protected static final String RANGE_RECORDS_URL = RECORDS_URL;
+    protected static final String WORKDAYS_URL = BASE_SUFFIX_URL + "/workdays" + TENANT_ID_URL;
+    protected static final String HOURS_URL = BASE_SUFFIX_URL + "/hours" + TENANT_ID_URL;
+    protected static final String OVERTIME_URL = BASE_SUFFIX_URL + "/overtime" + TENANT_ID_URL;
+    protected static final String CHECK_URL = BASE_SUFFIX_URL + "/check" + TENANT_ID_URL + "/user/%s";
+    protected static final String REMOVE_URL = BASE_SUFFIX_URL + "/sessionRemove" + TENANT_ID_URL + "/session/%s";
+
+    @Autowired
+    protected SessionAttendanceTimeRepository sessionAttendanceTimeRepository;
 
     protected static final String RANGE_START = "2024-01-01";
     protected static final String RANGE_END = "2024-01-31";
@@ -82,7 +78,8 @@ public abstract class BaseApiControllerTest {
 
     protected String jwtTokenAdministrator = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkiLCJleHAiOjIxMDEwMzI4MzEsImlhdCI6MTc4NTY3MjgzMSwiYXV0aG9yaXRpZXMiOlsiQURNSU4iLCJBRE1JTklTVFJBVE9SIiwiTU9ERVJBVE9SIiwiVVNFUiIsIkZBQ1RPUl9QQVNTV09SRCJdfQ.7v9mluTswU2F7GRdG5xKQxStTGn5bEy_5Dn74FYqShU";
     protected String jwtTokenUser = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjMiLCJleHAiOjIxMDEwMzI3MDIsImlhdCI6MTc4NTY3MjcwMiwiYXV0aG9yaXRpZXMiOlsiVVNFUiIsIkZBQ1RPUl9QQVNTV09SRCJdfQ.x_Jobfo63CL4eUxU6lBO11SyMG7ZdQeO5Z3S5wyjbLY";
-
+    protected String jwtTokenUserTenant_123 = "eyJhbGciOiJIUzI1NiJ9" +
+            ".eyJ0ZW5hbnRJZCI6MTIzLCJzdWIiOiIxMjMiLCJleHAiOjIxMDE3MDkzNDAsImlhdCI6MTc4NjM0OTM0MCwiYXV0aG9yaXRpZXMiOlsiVVNFUiIsIkZBQ1RPUl9QQVNTV09SRCJdfQ.zSHpMa_RqUSFByzlk5MxchZuInlxZihHJbPfD9gNodw";
     private static RestTemplate createRestTemplate() {
             RestTemplate rt = new RestTemplate();
             rt.setErrorHandler(new DefaultResponseErrorHandler() {
@@ -94,27 +91,60 @@ public abstract class BaseApiControllerTest {
             return rt;
     }
 
-    protected ResponseEntity<String> sendRequestWithAdmin(HttpMethod method, String path, Object requestBody) {
+    private HttpHeaders getHeaders(String jwtTokenAdministrator) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBearerAuth(jwtTokenAdministrator);
-        return sendRequest(method, path, requestBody, headers);
+        return headers;
     }
 
-    protected ResponseEntity<String> sendRequestWithUserRole(HttpMethod method, String path, Object requestBody) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setBearerAuth(jwtTokenUser);
-        return sendRequest(method, path, requestBody, headers);
+    protected ResponseEntity<String> sendRequestWithAdmin(HttpMethod method, String path,
+                                                          Integer userId, int tenantId, Object requestBody) {
+        return sendRequest(method, buildUrl(path, userId, tenantId), requestBody, getHeaders(jwtTokenAdministrator));
+    }
+
+    protected ResponseEntity<String> sendDeleteRequestWithAdmin(HttpMethod method, String path,
+                                                                Integer sessionId, int tenantId, Object requestBody) {
+
+        return sendRequest(method, String.format(path, tenantId, sessionId), requestBody,
+                getHeaders(jwtTokenAdministrator));
+    }
+
+    private String buildUrl(String path, Integer userId, Integer tenantId) {
+
+        if (Objects.isNull(userId)) {
+            return String.format(path, tenantId);
+        }
+        return String.format(path, tenantId, userId);
+    }
+
+    protected ResponseEntity<String> sendRequestWithUserRole(HttpMethod method, String path,
+                                                             Integer userId, Integer tenantId,
+                                                             Object requestBody) {
+        return sendRequest(method, buildUrl(path, userId, tenantId), requestBody, getHeaders(jwtTokenUser));
+    }
+
+    protected ResponseEntity<String> sendRequestWithUserRole(HttpMethod method, String path,
+                                                             Integer userId, Integer tenantId,
+                                                             Object requestBody, String jwtToken) {
+        return sendRequest(method, buildUrl(path, userId, tenantId), requestBody, getHeaders(jwtToken));
     }
 
     private ResponseEntity<String> sendRequest(HttpMethod method, String path, Object requestBody, HttpHeaders headers) {
         Object payload = (requestBody == null || requestBody instanceof String) ? requestBody : objectMapper.writeValueAsString(requestBody);
-        return rest.exchange(url(path), method, new HttpEntity<>(payload, headers), String.class);
+        ResponseEntity<String> response;
+
+        response = rest.exchange(url(path), method, new HttpEntity<>(payload, headers),
+                String.class);
+        if (response.getStatusCode().isError()) {
+            System.out.println("STATUS: " + response.getStatusCode());
+            System.out.println(response.getBody());
+        }
+        return response;
     }
 
-    protected String url(String path){
-        return "http://localhost:" + port + path;
+    protected String url(String path) {
+        return String.format("http://localhost:%s%s", port, path);
     }
 
 
@@ -161,38 +191,56 @@ public abstract class BaseApiControllerTest {
         }
     }
 
-    protected EditDataTimeUserDto createEditDataTimeUserDto(Integer id, LocalDateTime start, LocalDateTime finish) {
+    protected EditDataTimeUserDto createEditDataTimeUserDto(Integer id, OffsetDateTime start, OffsetDateTime finish) {
         return EditDataTimeUserDto.builder()
                 .id(id)
-                .start(start)
-                .finish(finish)
+                .openSessionDate(start)
+                .closeSessionDate(finish)
                 .build();
     }
 
-    protected void verifyRecordStartEndApi(Integer rawId, Integer userId, LocalDateTime startTimeDate, LocalDateTime endTimeDate) {
-        Optional<DataTime> opUser = userAttendanceTimeRepository.findById(rawId);
-        assertTrue(opUser.isPresent());
-        assertEquals(userId, opUser.get().getUser().getIdUser());
-        ofNullable(startTimeDate).ifPresent(startTime -> assertEquals(startTime, opUser.get().getStart()));
-        ofNullable(endTimeDate).ifPresent(endTime -> assertEquals(endTime, opUser.get().getFinish()));
+    protected void verifyRecordStartEndApi(Integer rawId, Integer userId, OffsetDateTime startTimeDate,
+                                           OffsetDateTime endTimeDate) {
+        Optional<DataTime> opSession = sessionAttendanceTimeRepository.findById(rawId);
+        assertTrue(opSession.isPresent());
+        assertEquals(userId, opSession.get().getIdUser());
+        ofNullable(startTimeDate).ifPresent(
+                startTime -> assertEquals(startTime.toInstant(), opSession.get().getOpenSessionDate().toInstant()));
+        ofNullable(endTimeDate).ifPresent(
+                endTime -> assertEquals(endTime.toInstant(), opSession.get().getCloseSessionDate().toInstant()));
     }
 
-    protected void verifyRecordStartEndResponseApi(DataTimeDto body, Integer userId, boolean isStartTime, boolean isEndTime, Integer expectedRecordId) {
-        ofNullable(expectedRecordId).ifPresent(recId -> assertEquals(recId, body.getId(), "Reason: should reuse today's open"));
-        assertNotNull(body.getUser());
-        assertNotNull(body.getUser().getIdUser());
+    protected void verifyRespondedBodyOpenCloseSessionApi(DataTimeDto body, Integer userId,
+                                                          int tenant, OffsetDateTime startTime,
+                                                          OffsetDateTime endTime,
+                                                          Integer expectedRecordId) {
+        ofNullable(expectedRecordId).ifPresent(
+                recId -> assertEquals(recId, body.getId(), "Reason: should reuse today's open"));
+        assertNotNull(body.getUserId());
         assertNotNull(body.getId());
-        assertEquals(userId, body.getUser().getIdUser());
-        if (isStartTime) {
-            assertNotNull(body.getStart(), "Reason: start must be set");
-        }
-        if (isEndTime) {
-            assertNotNull(body.getFinish(), "Reason: finish must be set");
-        }
+        assertEquals(userId, body.getUserId());
+        ofNullable(startTime).ifPresent(
+                expectedStartTime -> assertEquals(expectedStartTime.toInstant(),
+                        body.getOpenSessionDate().toInstant(), "Reason: start must be set"));
+        ofNullable(endTime).ifPresent(expectedEndTime -> assertEquals(expectedEndTime.toInstant(),
+                body.getCloseSessionDate().toInstant(), "Reason: finish must be set"));
+        assertEquals(tenant, body.getTenantId());
     }
 
     protected String range(String base, int idUser) {
-        return base + "?startDate=" + RANGE_START + "&finishDate=" + RANGE_END + "&idUser=" + idUser;
+        return base + "?startDate=" + RANGE_START + "&endDate=" + RANGE_END + "&idUser=" + idUser;
     }
 
+    protected String range(String base) {
+        return base + "?startDate=" + RANGE_START + "&endDate=" + RANGE_END;
+    }
+
+    protected SessionDataDto generateSessionDataDto(LocalDate workDate, OffsetDateTime openDate,
+                                                    OffsetDateTime closeDate) {
+        SessionDataDto task = new SessionDataDto();
+        task.setOpenSessionDate(openDate);
+        task.setCloseSessionDate(closeDate);
+        task.setWorkDate(workDate);
+        return task;
+    }
 }

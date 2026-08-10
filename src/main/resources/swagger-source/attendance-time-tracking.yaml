@@ -1,7 +1,7 @@
 swagger: '2.0'
 
 info:
-  title: Aviv Smile Attendance Time Tracking
+  title: Attendance Time Tracking
   description: |
     Services for work-time tracking and attendance management.
   version: 1.0.0
@@ -17,13 +17,20 @@ tags:
 
 paths:
 
-  /record/start/{idUser}:
+  /attendance/openSession/tenant/{tenantId}/userId/{idUser}:
     put:
       summary: Starts a new work-time record for a user
-      operationId: addRecordStart
+      operationId: openSession
       tags:
         - Time Tracking
       parameters:
+        - name: tenantId
+          in: path
+          description: |
+            Unique identifier of the tenant
+          required: true
+          type: integer
+          format: int32
         - name: idUser
           in: path
           description: |
@@ -31,6 +38,13 @@ paths:
           required: true
           type: integer
           format: int32
+        - name: body
+          in: body
+          description: |
+            Session tracking parameters
+          required: true
+          schema:
+            $ref: '#/definitions/SessionDataDto'
       responses:
         '200':
           description: |
@@ -46,13 +60,20 @@ paths:
         '500':
           $ref: '#/responses/500-InternalServerError'
 
-  /record/finish/{idUser}:
+  /attendance/closeSession/tenant/{tenantId}/userId/{idUser}:
     put:
       summary: Finishes an active work-time record for a user
-      operationId: addRecordEnd
+      operationId: closeSession
       tags:
         - Time Tracking
       parameters:
+        - name: tenantId
+          in: path
+          description: |
+            Unique identifier of the tenant
+          required: true
+          type: integer
+          format: int32
         - name: idUser
           in: path
           description: |
@@ -60,6 +81,13 @@ paths:
           required: true
           type: integer
           format: int32
+        - name: body
+          in: body
+          description: |
+            Session tracking parameters
+          required: true
+          schema:
+            $ref: '#/definitions/SessionDataDto'
       responses:
         '200':
           description: |
@@ -75,13 +103,20 @@ paths:
         '500':
           $ref: '#/responses/500-InternalServerError'
 
-  /record:
+  /attendance/sessionChange/tenant/{tenantId}:
     post:
       summary: Edits an existing work-time record
       operationId: editRecord
       tags:
         - Time Tracking
       parameters:
+        - name: tenantId
+          in: path
+          description: |
+            Unique identifier of the tenant
+          required: true
+          type: integer
+          format: int32
         - name: EditDataTimeUserDto
           in: body
           description: |
@@ -104,44 +139,20 @@ paths:
         '500':
           $ref: '#/responses/500-InternalServerError'
 
-  /record/records:
+  /attendance/sessions/tenant/{tenantId}:
     get:
-      summary: Gets all work-time records for a specific date
-      operationId: getAllRecordsByDay
-      tags:
-        - Time Tracking
-      parameters:
-        - name: localDate
-          in: query
-          description: |
-            Date to retrieve records for (ISO format YYYY-MM-DD)
-          required: true
-          type: string
-          format: date
-      responses:
-        '200':
-          description: |
-            List of work-time records for the specified day
-          schema:
-            type: array
-            items:
-              $ref: '#/definitions/DataTimeDto'
-        '400':
-          $ref: '#/responses/400-BadRequest'
-        '401':
-          $ref: '#/responses/401-Unauthorized'
-        '403':
-          $ref: '#/responses/403-Forbidden'
-        '500':
-          $ref: '#/responses/500-InternalServerError'
-
-  /record/range/records:
-    get:
-      summary: Gets all work-time records for an employee within a date range
+      summary: Gets sessions within a date range or-and user id
       operationId: getAllRecordsEmployeeByMonth
       tags:
         - Time Tracking
       parameters:
+        - name: tenantId
+          in: path
+          description: |
+            Unique identifier of the tenant
+          required: true
+          type: integer
+          format: int32
         - name: startDate
           in: query
           description: |
@@ -149,7 +160,7 @@ paths:
           required: true
           type: string
           format: date
-        - name: finishDate
+        - name: endDate
           in: query
           description: |
             Finish date of the range (ISO format YYYY-MM-DD)
@@ -160,7 +171,7 @@ paths:
           in: query
           description: |
             Unique identifier of the user
-          required: true
+          required: false
           type: integer
           format: int32
       responses:
@@ -180,21 +191,28 @@ paths:
         '500':
           $ref: '#/responses/500-InternalServerError'
 
-  /record/workdays:
+  /attendance/workdays/tenant/{tenantId}:
     get:
       summary: Counts total worked days for an employee within a date range
       operationId: getCountWorkedDaysByEmployee
       tags:
         - Time Tracking
       parameters:
-        - name: startDate
+        - name: tenantId
+          in: path
+          description: |
+            Unique identifier of the tenant
+          required: true
+          type: integer
+          format: int32
+        - name: openSessionDate
           in: query
           description: |
             Start date of the range (ISO format YYYY-MM-DD)
           required: true
           type: string
           format: date
-        - name: finishDate
+        - name: closeSessionDate
           in: query
           description: |
             Finish date of the range (ISO format YYYY-MM-DD)
@@ -224,21 +242,28 @@ paths:
         '500':
           $ref: '#/responses/500-InternalServerError'
 
-  /record/hours:
+  /attendance/hours/tenant/{tenantId}:
     get:
       summary: Calculates total worked hours for an employee within a date range
       operationId: getAllHoursEmployeeBetweenDates
       tags:
         - Time Tracking
       parameters:
-        - name: startDate
+        - name: tenantId
+          in: path
+          description: |
+            Unique identifier of the tenant
+          required: true
+          type: integer
+          format: int32
+        - name: openSessionDate
           in: query
           description: |
             Start date of the range (ISO format YYYY-MM-DD)
           required: true
           type: string
           format: date
-        - name: finishDate
+        - name: closeSessionDate
           in: query
           description: |
             Finish date of the range (ISO format YYYY-MM-DD)
@@ -268,13 +293,20 @@ paths:
         '500':
           $ref: '#/responses/500-InternalServerError'
 
-  /record/overtime:
+  /attendance/overtime/tenant/{tenantId}:
     get:
       summary: Calculates overtime hours for an employee within a date range
       operationId: getOvertimeEmployeeBetweenDates
       tags:
         - Time Tracking
       parameters:
+        - name: tenantId
+          in: path
+          description: |
+            Unique identifier of the tenant
+          required: true
+          type: integer
+          format: int32
         - name: startDate
           in: query
           description: |
@@ -282,7 +314,7 @@ paths:
           required: true
           type: string
           format: date
-        - name: finishDate
+        - name: endDate
           in: query
           description: |
             Finish date of the range (ISO format YYYY-MM-DD)
@@ -312,13 +344,27 @@ paths:
         '500':
           $ref: '#/responses/500-InternalServerError'
 
-  /record/check:
+  /attendance/check/tenant/{tenantId}/user/{idUser}:
     get:
       summary: Checks and retrieves incomplete (null) records within a date range
       operationId: checkRowsForNull
       tags:
         - Time Tracking
       parameters:
+        - name: tenantId
+          in: path
+          description: |
+            Unique identifier of the tenant
+          required: true
+          type: integer
+          format: int32
+        - name: idUser
+          in: path
+          description: |
+            Unique identifier of the user
+          required: true
+          type: integer
+          format: int32
         - name: startDate
           in: query
           description: |
@@ -326,20 +372,13 @@ paths:
           required: true
           type: string
           format: date
-        - name: finishDate
+        - name: endDate
           in: query
           description: |
             Finish date of the range (ISO format YYYY-MM-DD)
           required: true
           type: string
           format: date
-        - name: idUser
-          in: query
-          description: |
-            Unique identifier of the user
-          required: true
-          type: integer
-          format: int32
       responses:
         '200':
           description: |
@@ -357,7 +396,7 @@ paths:
         '500':
           $ref: '#/responses/500-InternalServerError'
 
-  /record/remove/{id}:
+  /attendance/sessionRemove/tenant/{tenantId}/session/{id}:
     delete:
       summary: Removes a work-time record
       operationId: removeRecord
@@ -368,6 +407,13 @@ paths:
           in: path
           description: |
             Unique identifier of the time record to remove
+          required: true
+          type: integer
+          format: int32
+        - name: tenantId
+          in: path
+          description: |
+            Unique identifier of the tenant
           required: true
           type: integer
           format: int32
@@ -389,24 +435,27 @@ paths:
 
 definitions:
 
-  UserDto:
+
+  SessionDataDto:
     type: object
     description: |
-      Basic user information embedded in a time record
+      Input data required to open or close a work session
     properties:
-      idUser:
+      openSessionDate:
         description: |
-          Unique identifier of the user
-        type: integer
-        format: int32
-      firstName:
-        description: |
-          First name of the user
+          Moment the session opened
         type: string
-      lastName:
+        format: date-time
+      closeSessionDate:
         description: |
-          Last name of the user
+          Moment the session closed
         type: string
+        format: date-time
+      workDate:
+        description: |
+          Calendar work date
+        type: string
+        format: date
 
   DataTimeDto:
     type: object
@@ -418,19 +467,27 @@ definitions:
           Unique identifier of the record
         type: integer
         format: int32
-      user:
-        $ref: '#/definitions/UserDto'
-      date:
+      userId:
+        description: |
+          User identifier
+        type: integer
+        format: int32
+      tenantId:
+        description: |
+          tenant identifier
+        type: integer
+        format: int32
+      workDate:
         description: |
           Calendar day of the record
         type: string
         format: date
-      start:
+      openSessionDate:
         description: |
           Moment the record was started
         type: string
         format: date-time
-      finish:
+      closeSessionDate:
         description: |
           Moment the record was finished
         type: string
@@ -446,12 +503,12 @@ definitions:
           Unique identifier of the record to edit
         type: integer
         format: int32
-      start:
+      openSessionDate:
         description: |
           New start moment
         type: string
         format: date-time
-      finish:
+      closeSessionDate:
         description: |
           New finish moment
         type: string

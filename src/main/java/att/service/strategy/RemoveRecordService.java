@@ -11,16 +11,12 @@ public class RemoveRecordService extends DataTimeServiceBase<DataTimeDto> {
 
     @Override
     protected void fetchAndValidate(DataTimeContext<DataTimeDto> context) {
-        context.setDataTime(findRecordOrThrow(context.getRecordId()));
+        context.getUserWorkSessionList().add(findRecordOrThrow(context.getRecordId()));
     }
 
     @Override
     protected void persist(DataTimeContext<DataTimeDto> context) {
-        timeRepository.delete(context.getDataTime());
+        timeRepository.deleteAll(context.getUserWorkSessionList());
     }
 
-    @Override
-    protected void mapResult(DataTimeContext<DataTimeDto> context) {
-        context.setResult(mapper.toDto(context.getDataTime()));
-    }
 }

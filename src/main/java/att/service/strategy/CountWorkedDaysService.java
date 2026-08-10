@@ -4,21 +4,15 @@ import org.springframework.stereotype.Service;
 
 import att.context.DataTimeContext;
 import att.service.base.DataTimeServiceBase;
-import jakarta.persistence.TypedQuery;
 
 @Service
-public class CountWorkedDaysService extends DataTimeServiceBase<Long> {
+public class CountWorkedDaysService extends DataTimeServiceBase<Void> {
 
     @Override
-    protected void fetchAndValidate(DataTimeContext<Long> context) {
-        super.fetchAndValidate(context);
-        TypedQuery<Long> query = em.createQuery(
-            "select COUNT(distinct date) from DataTime h where h.user.idUser = ?1 and date BETWEEN :start and :finish",
-            Long.class
-        );
-        query.setParameter(1, context.getIdUser());
-        query.setParameter("start", context.getStartDate());
-        query.setParameter("finish", context.getFinishDate());
-        context.setResult(query.getResultList().get(0));
+    protected void fetchAndValidate(DataTimeContext<Void> context) {
+
+        context.setTotalDays(
+                timeRepository.countByTenantIdAndIdUserAndWorkDateBetween(context.getTenantId(), context.getIdUser(),
+                        context.getStartDate(), context.getEndDate()));
     }
 }

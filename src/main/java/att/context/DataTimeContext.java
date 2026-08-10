@@ -1,11 +1,13 @@
 package att.context;
 
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
+import att.dto.DataTimeDto;
 import att.dto.EditDataTimeUserDto;
 import att.model.DataTime;
-import att.model.User;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -17,20 +19,36 @@ import lombok.Setter;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class DataTimeContext<R> {
+public class DataTimeContext<T> {
     // input
+    private T task;
     private Integer idUser;
     private Integer recordId;
-    private LocalDate date;
+    private LocalDate workDate;
     private LocalDate startDate;
-    private LocalDate finishDate;
+    private LocalDate endDate;
+    private OffsetDateTime openSessionDate;
+    private OffsetDateTime closeSessionDate;
     private EditDataTimeUserDto editDto;
+    private Integer tenantId;
 
-    // working state
-    private User user;
-    private DataTime dataTime;
-    private List<DataTime> dataTimeList;
+    @Builder.Default
+    private List<DataTime> userWorkSessionList = new ArrayList<>();
+    @Builder.Default
+    private LocalDate now = LocalDate.now();
 
     // output
-    private R result;
+    private Long totalHours;
+    private Long totalDays;
+    private Long totalOvertimeHours;
+    @Builder.Default
+    private List<DataTimeDto> responseDataTimeDto = new ArrayList<>();
+
+    public DataTimeDto getSingleResponseDataTimeDto() {
+        return this.responseDataTimeDto.get(0);
+    }
+
+
+
+
 }
