@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import att.dto.DataTimeDto;
@@ -64,7 +65,7 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
     void openNewAttendanceSessionTest() {
         long recordCountBefore = sessionAttendanceTimeRepository.count();
         int tenant = 2;
-        OffsetDateTime openDate = OffsetDateTime.now();
+        OffsetDateTime openDate = OffsetDateTime.now().truncatedTo(ChronoUnit.MILLIS);
         SessionDataDto task = generateSessionDataDto(LocalDate.now(), openDate, null);
         ResponseEntity<String> response = sendRequestWithAdmin(HttpMethod.PUT, OPEN_URL, USER_ID, tenant,
                 task);
@@ -121,7 +122,7 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
     void closeWorkSessionTest_positive() {
         long recordCountBefore = sessionAttendanceTimeRepository.count();
         int tenant = 2;
-        OffsetDateTime closeSessionDate = OffsetDateTime.now();
+        OffsetDateTime closeSessionDate = OffsetDateTime.now().truncatedTo(ChronoUnit.MILLIS);
         LocalDate inputWorkDate = closeSessionDate.toLocalDate();
         SessionDataDto task = generateSessionDataDto(inputWorkDate, null, closeSessionDate);
         ResponseEntity<String> response = sendRequestWithAdmin(HttpMethod.PUT, CLOSE_URL,
