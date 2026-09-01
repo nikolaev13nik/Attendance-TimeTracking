@@ -13,7 +13,7 @@ public class AttUtility {
 
     public static void validateOpenCloseDateInput(Supplier<OffsetDateTime> openCloseDateTime, LocalDate workDate,
                                                   String errorMsg) {
-        if (isNull(openCloseDateTime.get()) && isFalse(openCloseDateTime.get().toLocalDate().equals(workDate))) {
+        if (isNull(openCloseDateTime.get()) || isFalse(openCloseDateTime.get().toLocalDate().equals(workDate))) {
             throw new BadRequestException(errorMsg);
         }
     }
