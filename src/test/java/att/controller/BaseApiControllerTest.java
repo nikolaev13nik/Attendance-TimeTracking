@@ -111,7 +111,6 @@ public abstract class BaseApiControllerTest {
     }
 
     private String buildUrl(String path, Integer userId, Integer tenantId) {
-
         if (Objects.isNull(userId)) {
             return String.format(path, tenantId);
         }
