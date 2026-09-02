@@ -7,6 +7,10 @@ on:
   pull_request:
     branches: [ "main" ]
 
+permissions:
+  contents: write
+  packages: write
+
 jobs:
   build:
 
@@ -42,14 +46,15 @@ jobs:
 
           git fetch --tags
 
-          # Find latest version created from main
+          # Find latest main version
           latest=$(git tag --list '[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n 1)
 
-          if [ -z "$latest" ]; then
-            latest="1.0.0"
-          fi
-
           if [ "${{ github.event_name }}" = "pull_request" ]; then
+
+            # If there are no main versions yet
+            if [ -z "$latest" ]; then
+              latest="1.0.0"
+            fi
 
             # PR version:
             # latest main version + GitHub Actions run number
@@ -57,13 +62,16 @@ jobs:
 
           else
 
-            # Main version:
-            # increment patch number
-            IFS='.' read -r major minor patch <<< "$latest"
+            # Main version
+            if [ -z "$latest" ]; then
+              version="1.0.0"
+            else
+              IFS='.' read -r major minor patch <<< "$latest"
 
-            patch=$((patch + 1))
+              patch=$((patch + 1))
 
-            version="$major.$minor.$patch"
+              version="$major.$minor.$patch"
+            fi
 
           fi
 
@@ -72,6 +80,29 @@ jobs:
           echo "================================="
           echo "Build version: $version"
           echo "================================="
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Docker image
+        run: |
+
+          IMAGE_NAME=$(echo "ghcr.io/${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')
+
+          docker build \
+            -t "$IMAGE_NAME:${{ steps.version.outputs.version }}" \
+            .
+
+      - name: Push Docker image
+        run: |
+
+          IMAGE_NAME=$(echo "ghcr.io/${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')
+
+          docker push "$IMAGE_NAME:${{ steps.version.outputs.version }}"
 
       - name: Create main version tag
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
