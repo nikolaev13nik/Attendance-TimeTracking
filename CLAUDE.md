@@ -102,9 +102,26 @@ return path.
 
 ## Testing conventions
 
+**New tests must follow this existing pattern — full end-to-end flow through a real running server,
+not component/unit-style tests.** Do not write `@WebMvcTest`/`MockMvc`/mocked-service-layer tests for
+controller behavior; this project's convention is a real `@SpringBootTest(webEnvironment = RANDOM_PORT)`
+hitting the actual HTTP endpoint over `RestTemplate`, exercising the whole pipeline (security filter
+chain, tenant interceptor, strategy service, real DB) exactly as production traffic would.
+
 Controller tests (`src/test/java/att/controller`) extend `BaseApiControllerTest`, which boots the full
 app on a random port and drives it over a real `RestTemplate` (not `MockMvc`) using pre-built JWTs
 for admin/user roles (`jwtTokenAdministrator`, `jwtTokenUser`, plus a tenant-scoped one). Reuse its
 `sendRequestWithAdmin` / `sendRequestWithUserRole` helpers and the seeded record IDs/date constants
 (e.g. `SEEDED_OPEN_ID`, `RANGE_START`/`RANGE_END`) rather than re-deriving fixtures — the seed data
-comes from `V2__att_work_sessions_setup.sql`.
+comes from `V2__att_work_sessions_setup.sql`. A new endpoint/flow gets a new test method (or class)
+in this same style, reusing the base class's helpers rather than introducing a different test setup.
+
+## General coding principles
+
+- Avoid duplicating logic — extend/reuse the existing base classes and helpers (`DataTimeServiceBase`,
+  `BaseGetService`, `AttUtility`, `BaseApiControllerTest`) instead of copy-pasting similar code across
+  strategy services or tests.
+- Apply SOLID principles and standard Java/OOP design-pattern practice (the strategy pattern already
+  used for `att.service.strategy`, template method in `DataTimeServiceBase`, single-responsibility per
+  service/class) — follow the idioms already present in the codebase rather than introducing new ones
+  without reason.
