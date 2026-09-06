@@ -40,6 +40,9 @@ edit the yaml first**, then rebuild so the interface regenerates, then implement
 
 ### Request pipeline: strategy services over a shared mutable context
 
+**Always follow this existing pattern for new or changed endpoints — don't introduce a different
+structure (no business logic in the controller, no bypassing the pipeline, no new base class).**
+
 Each endpoint delegates to one `@Service` "strategy" class in `att.service.strategy`, all extending
 `DataTimeServiceBase<R>` (`att.service.base`), which fixes a template method pipeline:
 
