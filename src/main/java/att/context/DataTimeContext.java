@@ -20,6 +20,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class DataTimeContext<T> {
+
     // input
     private T task;
     private Integer idUser;
@@ -31,18 +32,19 @@ public class DataTimeContext<T> {
     private OffsetDateTime closeSessionDate;
     private EditDataTimeUserDto editDto;
     private Integer tenantId;
-
     @Builder.Default
     private List<DataTime> userWorkSessionList = new ArrayList<>();
     @Builder.Default
     private LocalDate currentLocalDate = LocalDate.now();
-
     // output
     private Long totalHours;
     private Long totalDays;
     private Long totalOvertimeHours;
     @Builder.Default
     private List<DataTimeDto> responseDataTimeDto = new ArrayList<>();
+    @Builder.Default
+    private StatisticInfoHolder statisticInfoHolder = new StatisticInfoHolder();
+
 
     public DataTimeDto getSingleResponseDataTimeDto() {
         return this.responseDataTimeDto.get(0);

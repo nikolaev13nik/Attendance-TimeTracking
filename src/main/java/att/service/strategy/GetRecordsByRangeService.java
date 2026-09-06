@@ -6,7 +6,7 @@ import att.context.DataTimeContext;
 import att.service.base.DataTimeServiceBase;
 
 @Service
-public class GetRecordsByMonthService extends DataTimeServiceBase<Void> {
+public class GetRecordsByRangeService extends DataTimeServiceBase<Void> {
 
     @Override
     protected void fetchAndValidate(DataTimeContext<Void> context) {

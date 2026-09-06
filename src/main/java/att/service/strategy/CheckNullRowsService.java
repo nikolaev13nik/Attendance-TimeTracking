@@ -6,15 +6,20 @@ import java.util.List;
 
 import att.context.DataTimeContext;
 import att.dto.DataTimeDto;
-import att.service.base.DataTimeServiceBase;
 
 @Service
-public class CheckNullRowsService extends DataTimeServiceBase<List<DataTimeDto>> {
+public class CheckNullRowsService extends BaseGetService<List<DataTimeDto>> {
 
     @Override
     protected void fetchAndValidate(DataTimeContext<List<DataTimeDto>> context) {
-        context.setUserWorkSessionList(timeRepository.findIncompleteSessions(context.getTenantId(), context.getIdUser(),
+        context.setUserWorkSessionList(fetchIncompleteSessions(context.getTenantId(), context.getIdUser(),
                 context.getStartDate(), context.getEndDate()));
     }
+
+
+//    List<DataTime> fetchIncompleteSessions(Integer tenantId, Integer idUser, LocalDate startDate, LocalDate endDate){
+//        return  timeRepository.findIncompleteSessions(tenantId, idUser,
+//                startDate,endDate);
+//    }
 
 }

@@ -139,10 +139,49 @@ paths:
         '500':
           $ref: '#/responses/500-InternalServerError'
 
+  /attendance/addLeaveDays/tenant/{tenantId}/userId/{idUser}:
+    post:
+      summary: Add leave days (vacation and sick days) for a user
+      operationId: addLeaveDays
+      tags:
+        - Time Tracking
+      parameters:
+        - name: tenantId
+          in: path
+          description: Unique identifier of the tenant
+          required: true
+          type: integer
+          format: int32
+        - name: idUser
+          in: path
+          description: Unique identifier of the user
+          required: true
+          type: integer
+          format: int32
+        - name: leaveReport
+          in: body
+          description: Report containing leave dates for vacation and sick leave
+          required: true
+          schema:
+            $ref: '#/definitions/LeaveReportRequestDto'
+
+      responses:
+        '200':
+          description: Leave days successfully added/updated
+        '400':
+          $ref: '#/responses/400-BadRequest'
+        '401':
+          $ref: '#/responses/401-Unauthorized'
+        '403':
+          $ref: '#/responses/403-Forbidden'
+        '500':
+          $ref: '#/responses/500-InternalServerError'
+
+
   /attendance/sessions/tenant/{tenantId}:
     get:
       summary: Gets sessions within a date range or-and user id
-      operationId: getAllRecordsEmployeeByMonth
+      operationId: getRecordsEmployeeByRange
       tags:
         - Time Tracking
       parameters:
@@ -396,6 +435,56 @@ paths:
         '500':
           $ref: '#/responses/500-InternalServerError'
 
+  /attendance/statistic/tenant/{tenantId}:
+    get:
+      summary: Retrieves statistic by tenant id and query parameters
+      operationId: getMonthStatistic
+      tags:
+        - Time Tracking
+      parameters:
+        - name: tenantId
+          in: path
+          description: Unique identifier of the tenant
+          required: true
+          type: integer
+          format: int32
+        - name: targetMonth
+          in: query
+          description: Target year and month in YYYY-MM format
+          required: true
+          type: string
+          format: year-month
+        #          example: "2026-07"
+        - name: idUser
+          in: query
+          description: Optional unique identifier of the user
+          required: false
+          type: integer
+          format: int32
+        - name: report
+          in: query
+          description: Flag to request extended report details
+          required: false
+          type: boolean
+          default: false
+
+      responses:
+        '200':
+          description: List of statistic records for required month
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/MonthlyUserStatisticInfoDto'
+        '400':
+          $ref: '#/responses/400-BadRequest'
+        '401':
+          $ref: '#/responses/401-Unauthorized'
+        '403':
+          $ref: '#/responses/403-Forbidden'
+        '500':
+          $ref: '#/responses/500-InternalServerError'
+
+
   /attendance/sessionRemove/tenant/{tenantId}/session/{id}:
     delete:
       summary: Removes a work-time record
@@ -513,6 +602,77 @@ definitions:
           New finish moment
         type: string
         format: date-time
+
+  MonthlyUserStatisticInfoDto:
+    type: object
+    description: Work-time statistics for a specific user, tenant, year, and month
+    properties:
+      tenantId:
+        type: integer
+        format: int32
+        description: Unique identifier of the tenant
+        example: 100
+      userId:
+        type: integer
+        format: int32
+        description: Unique identifier of the user
+        example: 42
+      yearMonth:
+        type: string
+        format: year-month
+        description: Target year and month (e.g., 2026-07)
+      #        example: "2026-07"
+      workDays:
+        type: integer
+        format: int32
+        description: Total number of days worked in the month
+        example: 22
+      overtimeHours:
+        type: integer
+        format: int64
+        description: Total overtime hours worked in the month
+        example: 15
+      totalWorkHours:
+        type: integer
+        format: int64
+        description: Total hours worked in the month
+        example: 176
+      vacationDays:
+        type: integer
+        format: int32
+        description: Number of approved vacation days taken
+        example: 2
+      sickDays:
+        type: integer
+        format: int32
+        description: Number of sick days taken
+        example: 1
+
+  LeaveReportRequestDto:
+    type: object
+    description: Payload containing report creation date and detailed lists of vacation and sick leave dates
+    required:
+      - reportDate
+    properties:
+      reportDate:
+        type: string
+        format: date
+        description: Date when the report was submitted (YYYY-MM-DD)
+        example: "2026-09-03"
+      vacationDays:
+        type: array
+        description: List of specific dates taken as vacation leave
+        items:
+          type: string
+          format: date
+          example: "2026-09-10"
+      sickDays:
+        type: array
+        description: List of specific dates taken as sick leave
+        items:
+          type: string
+          format: date
+          example: "2026-09-11"
 
   ApiError:
     type: object

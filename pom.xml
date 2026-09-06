@@ -25,7 +25,11 @@
 	</properties>
 
 	<dependencies>
-
+		<dependency>
+			<groupId>com.google.guava</groupId>
+			<artifactId>guava</artifactId>
+			<version>33.0.0-jre</version>
+		</dependency>
 		<dependency>
 			<groupId>org.hibernate.orm</groupId>
 			<artifactId>hibernate-core</artifactId>
@@ -158,7 +162,6 @@
 					</excludes>
 				</configuration>
 			</plugin>
-
 			<plugin>
 				<groupId>org.openapitools</groupId>
 				<artifactId>openapi-generator-maven-plugin</artifactId>
@@ -174,14 +177,12 @@
 								${project.basedir}/src/main/resources/swagger-source/attendance-time-tracking.yaml
 							</inputSpec>
 							<typeMappings>
-								<typeMapping>
-									DateTime=OffsetDateTime
-								</typeMapping>
+								<typeMapping>DateTime=OffsetDateTime</typeMapping>
+								<typeMapping>year-month=YearMonth</typeMapping>
 							</typeMappings>
 							<importMappings>
-								<importMapping>
-									OffsetDateTime=java.time.OffsetDateTime
-								</importMapping>
+								<importMapping>OffsetDateTime=java.time.OffsetDateTime</importMapping>
+								<importMapping>YearMonth=java.time.YearMonth</importMapping>
 							</importMappings>
 							<generatorName>spring</generatorName>
 							<apiPackage>att.api</apiPackage>

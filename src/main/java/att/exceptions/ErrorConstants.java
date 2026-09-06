@@ -6,4 +6,6 @@ public class ErrorConstants {
     public static final String OPEN_CLOSE_DATE_MISSING_MSG = "Open/close session date:%s should be related to today " +
             "and not be null.";
     public static final String ATTENDANCE_NOT_FOUND_MSG = "Attendance with id:%s is not found";
+    public static final String INCOMPLETE_SESSIONS_MSG = "There are incomplete sessions to be handled";
+
 }

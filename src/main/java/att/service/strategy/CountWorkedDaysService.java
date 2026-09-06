@@ -3,13 +3,20 @@ package att.service.strategy;
 import org.springframework.stereotype.Service;
 
 import att.context.DataTimeContext;
-import att.service.base.DataTimeServiceBase;
+import att.exceptions.BadRequestException;
+
+import static att.exceptions.ErrorConstants.INCOMPLETE_SESSIONS_MSG;
+import static org.springframework.util.CollectionUtils.isEmpty;
 
 @Service
-public class CountWorkedDaysService extends DataTimeServiceBase<Void> {
+public class CountWorkedDaysService extends BaseGetService<Void> {
 
     @Override
     protected void fetchAndValidate(DataTimeContext<Void> context) {
+        if (isEmpty(fetchIncompleteSessions(context.getTenantId(), context.getIdUser(),
+                context.getStartDate(), context.getEndDate()))) {
+            throw new BadRequestException(INCOMPLETE_SESSIONS_MSG);
+        }
         context.setTotalDays(
                 timeRepository.countByTenantIdAndIdUserAndWorkDateBetween(context.getTenantId(), context.getIdUser(),
                         context.getStartDate(), context.getEndDate()));

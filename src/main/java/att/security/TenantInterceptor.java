@@ -40,7 +40,7 @@ public class TenantInterceptor implements HandlerInterceptor {
         }
 
         if (!pathTenantId.equals(jwtTenantId)) {
-            log.error("Request was rejected by Nikita1");
+            log.error("Request was rejected: JWT's tenant does not match to path");
             response.sendError(HttpServletResponse.SC_FORBIDDEN, "Request was rejected: JWT's tenant does not match " +
                     "to path");
             return false;

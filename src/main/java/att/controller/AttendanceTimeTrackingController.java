@@ -10,23 +10,27 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
+import java.time.ZoneOffset;
 import java.util.List;
 
 import att.api.TimeTrackingApi;
 import att.context.DataTimeContext;
 import att.dto.DataTimeDto;
 import att.dto.EditDataTimeUserDto;
+import att.dto.LeaveReportRequestDto;
+import att.dto.MonthlyUserStatisticInfoDto;
 import att.dto.SessionDataDto;
 import att.service.strategy.CheckNullRowsService;
 import att.service.strategy.CloseSessionService;
 import att.service.strategy.CountWorkedDaysService;
 import att.service.strategy.GetHoursBetweenService;
 import att.service.strategy.GetOvertimeBetweenService;
-import att.service.strategy.GetRecordsByDayService;
-import att.service.strategy.GetRecordsByMonthService;
+import att.service.strategy.GetRecordsByRangeService;
 import att.service.strategy.OpenSessionService;
 import att.service.strategy.RemoveRecordService;
 import att.service.strategy.SessionChangeService;
+import att.service.strategy.StatisticInfoService;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -36,13 +40,13 @@ public class AttendanceTimeTrackingController implements TimeTrackingApi {
     private final OpenSessionService openSessionService;
     private final CloseSessionService closeSessionService;
     private final SessionChangeService sessionChangeService;
-    private final GetRecordsByDayService getRecordsByDayService;
     private final CountWorkedDaysService countWorkedDaysService;
-    private final GetRecordsByMonthService getRecordsByMonthService;
+    private final GetRecordsByRangeService getRecordsByRangeService;
     private final RemoveRecordService removeRecordService;
     private final GetHoursBetweenService getHoursBetweenService;
     private final GetOvertimeBetweenService getOvertimeBetweenService;
     private final CheckNullRowsService checkNullRowsService;
+    private final StatisticInfoService statisticInfoService;
 
     @PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name()) || #idUser.toString() == authentication.name")
     public ResponseEntity<DataTimeDto> openSession(@PathVariable Integer tenantId, @PathVariable Integer idUser,
@@ -74,22 +78,14 @@ public class AttendanceTimeTrackingController implements TimeTrackingApi {
     }
 
     @PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")
-    public ResponseEntity<List<DataTimeDto>> getAllRecordsByDay(@PathVariable Integer tenantId,
-                                                                @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate localDate) {
-        DataTimeContext<Void> context = DataTimeContext.<Void>builder().workDate(localDate).build();
-        getRecordsByDayService.execute(context);
-        return ResponseEntity.ok(context.getResponseDataTimeDto());
-    }
-
-    @PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")
-    public ResponseEntity<List<DataTimeDto>> getAllRecordsEmployeeByMonth(@PathVariable Integer tenantId,
-                                                                          @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate startDate,
-                                                                          @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate endDate,
-                                                                          @RequestParam Integer idUser) {
+    public ResponseEntity<List<DataTimeDto>> getRecordsEmployeeByRange(@PathVariable Integer tenantId,
+                                                                       @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate startDate,
+                                                                       @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate endDate,
+                                                                       @RequestParam Integer idUser) {
         DataTimeContext<Void> context = DataTimeContext.<Void>builder().idUser(idUser).startDate(startDate)
                 .tenantId(tenantId)
                 .endDate(endDate).build();
-        getRecordsByMonthService.execute(context);
+        getRecordsByRangeService.execute(context);
         return ResponseEntity.ok(context.getResponseDataTimeDto());
     }
 
@@ -127,6 +123,17 @@ public class AttendanceTimeTrackingController implements TimeTrackingApi {
         return ResponseEntity.ok(context.getTotalOvertimeHours());
     }
 
+    @Override
+    public ResponseEntity<Void> addLeaveDays(@PathVariable Integer tenantId, @PathVariable Integer idUser,
+                                             @RequestBody LeaveReportRequestDto leaveReport) {
+        DataTimeContext<LeaveReportRequestDto> context = DataTimeContext.<LeaveReportRequestDto>builder().idUser(idUser)
+                .task(leaveReport)
+                .tenantId(tenantId).build();
+//        getOvertimeBetweenService.execute(context);
+//        return ResponseEntity.ok(context.getTotalOvertimeHours());
+        return null;
+    }
+
     @PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")
     public ResponseEntity<List<DataTimeDto>> checkRowsForNull(@PathVariable Integer tenantId,
                                                               @PathVariable Integer idUser,
@@ -137,6 +144,22 @@ public class AttendanceTimeTrackingController implements TimeTrackingApi {
                         .startDate(startDate).endDate(endDate).build();
         checkNullRowsService.execute(context);
         return ResponseEntity.ok(context.getResponseDataTimeDto());
+    }
+
+    @PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")
+    @Override
+    public ResponseEntity<List<MonthlyUserStatisticInfoDto>> getMonthStatistic(@PathVariable Integer tenantId,
+                                                                               @RequestParam YearMonth targetMonth,
+                                                                               @RequestParam Integer idUser,
+                                                                               @RequestParam Boolean report) {
+        DataTimeContext<MonthlyUserStatisticInfoDto> context = DataTimeContext.<MonthlyUserStatisticInfoDto>builder()
+                .idUser(idUser)
+                .idUser(idUser)
+                .tenantId(tenantId).build();
+        context.getStatisticInfoHolder().setReport(report);
+        context.getStatisticInfoHolder().setStartOfMonth(targetMonth.atDay(1).atStartOfDay().atOffset(ZoneOffset.UTC));
+        statisticInfoService.execute(context);
+        return ResponseEntity.ok(context.getStatisticInfoHolder().getMultipleUserData().values().stream().toList());
     }
 
     @PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")
