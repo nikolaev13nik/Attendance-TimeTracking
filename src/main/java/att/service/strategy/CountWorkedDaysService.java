@@ -6,14 +6,14 @@ import att.context.DataTimeContext;
 import att.exceptions.BadRequestException;
 
 import static att.exceptions.ErrorConstants.INCOMPLETE_SESSIONS_MSG;
-import static org.springframework.util.CollectionUtils.isEmpty;
+import static org.hibernate.internal.util.collections.CollectionHelper.isNotEmpty;
 
 @Service
 public class CountWorkedDaysService extends BaseGetService<Void> {
 
     @Override
     protected void fetchAndValidate(DataTimeContext<Void> context) {
-        if (isEmpty(fetchIncompleteSessions(context.getTenantId(), context.getIdUser(),
+        if (isNotEmpty(fetchIncompleteSessions(context.getTenantId(), context.getIdUser(),
                 context.getStartDate(), context.getEndDate()))) {
             throw new BadRequestException(INCOMPLETE_SESSIONS_MSG);
         }
