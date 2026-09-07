@@ -222,6 +222,17 @@
 						<groupId>org.jacoco</groupId>
 						<artifactId>jacoco-maven-plugin</artifactId>
 						<version>0.8.13</version>
+						<configuration>
+							<excludes>
+								<!-- OpenAPI-generated API interfaces and DTOs (target/generated-sources/openapi) -->
+								<exclude>att/api/**</exclude>
+								<exclude>att/dto/**</exclude>
+								<!-- MapStruct-generated mapper implementations (target/generated-sources/annotations) -->
+								<exclude>att/mapper/*Impl.class</exclude>
+								<!-- Boot entrypoint: just SpringApplication.run, no branching logic -->
+								<exclude>att/*Application.class</exclude>
+							</excludes>
+						</configuration>
 						<executions>
 							<execution>
 								<id>prepare-agent</id>
