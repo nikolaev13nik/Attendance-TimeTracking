@@ -16,6 +16,7 @@ import att.dto.DataTimeDto;
 import att.dto.SessionDataDto;
 
 import static att.exceptions.ErrorConstants.ATTENDANCE_NOT_FOUND_MSG;
+import static att.exceptions.ErrorConstants.INCOMPLETE_SESSIONS_MSG;
 import static att.exceptions.ErrorConstants.OPEN_CLOSE_DATE_MISSING_MSG;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -255,7 +256,20 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
     @DisplayName("GET /record/workdays as admin counts distinct worked days")
     void workdaysAsAdminTest() {
         long recordCountBefore = sessionAttendanceTimeRepository.count();
+
+        // negative: SEEDED_OPEN_ID (1003) is unclosed and falls inside the queried range
         ResponseEntity<String> response = sendRequestWithAdmin(HttpMethod.GET, range(WORKDAYS_URL, USER_ID), null,
+                2, null);
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(INCOMPLETE_SESSIONS_MSG, errorMessage(response));
+
+        // close the blocking session via the edit API, then the identical request now succeeds
+        ResponseEntity<String> editResponse = sendRequestWithAdmin(HttpMethod.POST, EDIT_URL,
+                null, 2, createEditDataTimeUserDto(SEEDED_OPEN_ID, null,
+                        OffsetDateTime.parse("2024-01-04T17:30:00Z")));
+        assertEquals(HttpStatus.OK, editResponse.getStatusCode());
+
+        response = sendRequestWithAdmin(HttpMethod.GET, range(WORKDAYS_URL, USER_ID), null,
                 2, null);
         assertEquals (HttpStatus.OK, response.getStatusCode());
         assertEquals(3L, readObject(response, Long.class).longValue());
@@ -271,10 +285,23 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
     @DisplayName("GET get total hours as admin sums worked minutes")
     void getTotalHoursAsAdminTest() {
         long recordCountBefore = sessionAttendanceTimeRepository.count();
+
+        // negative: SEEDED_OPEN_ID (1003) is unclosed and falls inside the queried range
         ResponseEntity<String> response = sendRequestWithAdmin(HttpMethod.GET, range(HOURS_URL, USER_ID), null,
                 2, null);
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(INCOMPLETE_SESSIONS_MSG, errorMessage(response));
+
+        // close the blocking session via the edit API, then the identical request now succeeds
+        ResponseEntity<String> editResponse = sendRequestWithAdmin(HttpMethod.POST, EDIT_URL,
+                null, 2, createEditDataTimeUserDto(SEEDED_OPEN_ID, null,
+                        OffsetDateTime.parse("2024-01-04T17:30:00Z")));
+        assertEquals(HttpStatus.OK, editResponse.getStatusCode());
+
+        response = sendRequestWithAdmin(HttpMethod.GET, range(HOURS_URL, USER_ID), null,
+                2, null);
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(990L, readObject(response, Long.class).longValue());
+        assertEquals(1500L, readObject(response, Long.class).longValue());
 
         long countAfter = sessionAttendanceTimeRepository.count();
         assertEquals(recordCountBefore, countAfter,
@@ -287,10 +314,23 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
     @DisplayName("GET /record/overtime as admin sums minutes above 480/day")
     void overtimeAsAdminTest() {
         long recordCountBefore = sessionAttendanceTimeRepository.count();
+
+        // negative: SEEDED_OPEN_ID (1003) is unclosed and falls inside the queried range
         ResponseEntity<String> response = sendRequestWithAdmin(HttpMethod.GET, range(OVERTIME_URL, USER_ID), null,
                 2, null);
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(INCOMPLETE_SESSIONS_MSG, errorMessage(response));
+
+        // close the blocking session via the edit API, then the identical request now succeeds
+        ResponseEntity<String> editResponse = sendRequestWithAdmin(HttpMethod.POST, EDIT_URL,
+                null, 2, createEditDataTimeUserDto(SEEDED_OPEN_ID, null,
+                        OffsetDateTime.parse("2024-01-04T17:30:00Z")));
+        assertEquals(HttpStatus.OK, editResponse.getStatusCode());
+
+        response = sendRequestWithAdmin(HttpMethod.GET, range(OVERTIME_URL, USER_ID), null,
+                2, null);
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(30L, readObject(response, Long.class).longValue());
+        assertEquals(60L, readObject(response, Long.class).longValue());
 
         long countAfter = sessionAttendanceTimeRepository.count();
         assertEquals(recordCountBefore, countAfter,
