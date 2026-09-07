@@ -21,6 +21,7 @@ import att.dto.EditDataTimeUserDto;
 import att.dto.LeaveReportRequestDto;
 import att.dto.MonthlyUserStatisticInfoDto;
 import att.dto.SessionDataDto;
+import att.service.strategy.AddLeaveDaysService;
 import att.service.strategy.CheckNullRowsService;
 import att.service.strategy.CloseSessionService;
 import att.service.strategy.CountWorkedDaysService;
@@ -47,6 +48,7 @@ public class AttendanceTimeTrackingController implements TimeTrackingApi {
     private final GetOvertimeBetweenService getOvertimeBetweenService;
     private final CheckNullRowsService checkNullRowsService;
     private final StatisticInfoService statisticInfoService;
+    private final AddLeaveDaysService addLeaveDaysService;
 
     @PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name()) || #idUser.toString() == authentication.name")
     public ResponseEntity<DataTimeDto> openSession(@PathVariable Integer tenantId, @PathVariable Integer idUser,
@@ -123,15 +125,15 @@ public class AttendanceTimeTrackingController implements TimeTrackingApi {
         return ResponseEntity.ok(context.getTotalOvertimeHours());
     }
 
+    @PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")
     @Override
     public ResponseEntity<Void> addLeaveDays(@PathVariable Integer tenantId, @PathVariable Integer idUser,
                                              @RequestBody LeaveReportRequestDto leaveReport) {
         DataTimeContext<LeaveReportRequestDto> context = DataTimeContext.<LeaveReportRequestDto>builder().idUser(idUser)
                 .task(leaveReport)
                 .tenantId(tenantId).build();
-//        getOvertimeBetweenService.execute(context);
-//        return ResponseEntity.ok(context.getTotalOvertimeHours());
-        return null;
+        addLeaveDaysService.execute(context);
+        return ResponseEntity.ok().build();
     }
 
     @PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")

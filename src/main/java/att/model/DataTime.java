@@ -23,8 +23,6 @@ import lombok.ToString;
 @Getter
 @AllArgsConstructor
 @RequiredArgsConstructor
-//@NoArgsConstructor
-//@Builder
 @Entity
 @Table(name = "att_work_sessions")
 @EqualsAndHashCode(of = "id")

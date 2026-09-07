@@ -7,5 +7,7 @@ public class ErrorConstants {
             "and not be null.";
     public static final String ATTENDANCE_NOT_FOUND_MSG = "Attendance with id:%s is not found";
     public static final String INCOMPLETE_SESSIONS_MSG = "There are incomplete sessions to be handled";
+    public static final String LEAVE_DAY_AMOUNT_EXCEEDS_FULL_DAY_MSG =
+            "Leave day %s exceeds a full day: vacation:%s, sick:%s";
 
 }

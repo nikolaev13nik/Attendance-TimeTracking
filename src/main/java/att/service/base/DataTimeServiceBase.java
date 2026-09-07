@@ -3,6 +3,7 @@ package att.service.base;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import att.context.DataTimeContext;
+import att.dao.LeaveDaysRepository;
 import att.dao.SessionAttendanceTimeRepository;
 import att.exceptions.ErrorConstants;
 import att.exceptions.NotFoundException;
@@ -16,7 +17,8 @@ public abstract class DataTimeServiceBase<R> implements BaseService<R> {
 
     @Autowired
     protected SessionAttendanceTimeRepository timeRepository;
-
+    @Autowired
+    private LeaveDaysRepository leaveDaysRepository;
     @Autowired
     protected SessionRecordMapper sessionRecordMapper;
 
@@ -45,6 +47,7 @@ public abstract class DataTimeServiceBase<R> implements BaseService<R> {
 
     protected void persist(DataTimeContext<R> context) {
         timeRepository.saveAll(context.getUserWorkSessionList());
+        leaveDaysRepository.saveAll(context.getUserLeaveDaysList());
     }
 
     protected void mapResult(DataTimeContext<R> context) {

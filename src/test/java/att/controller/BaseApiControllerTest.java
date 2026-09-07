@@ -20,9 +20,12 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
+import att.dao.LeaveDaysRepository;
 import att.dao.SessionAttendanceTimeRepository;
 import att.dto.DataTimeDto;
 import att.dto.EditDataTimeUserDto;
+import att.dto.LeaveDayEntryDto;
+import att.dto.LeaveReportRequestDto;
 import att.dto.SessionDataDto;
 import att.model.DataTime;
 import tools.jackson.databind.JsonNode;
@@ -62,9 +65,13 @@ public abstract class BaseApiControllerTest {
     protected static final String OVERTIME_URL = BASE_SUFFIX_URL + "/overtime" + TENANT_ID_URL;
     protected static final String CHECK_URL = BASE_SUFFIX_URL + "/check" + TENANT_ID_URL + "/user/%s";
     protected static final String REMOVE_URL = BASE_SUFFIX_URL + "/sessionRemove" + TENANT_ID_URL + "/session/%s";
+    protected static final String ADD_LEAVE_DAYS_URL = BASE_SUFFIX_URL + "/addLeaveDays/tenant/%s/userId/%s";
 
     @Autowired
     protected SessionAttendanceTimeRepository sessionAttendanceTimeRepository;
+
+    @Autowired
+    protected LeaveDaysRepository leaveDaysRepository;
 
     protected static final String RANGE_START = "2024-01-01";
     protected static final String RANGE_END = "2024-01-31";
@@ -241,5 +248,13 @@ public abstract class BaseApiControllerTest {
         task.setCloseSessionDate(closeDate);
         task.setWorkDate(workDate);
         return task;
+    }
+
+    protected LeaveDayEntryDto generateLeaveDayEntryDto(LocalDate date, Double vacationAmount, Double sickAmount) {
+        return LeaveDayEntryDto.builder().date(date).vacationAmount(vacationAmount).sickAmount(sickAmount).build();
+    }
+
+    protected LeaveReportRequestDto generateLeaveReportRequestDto(List<LeaveDayEntryDto> days) {
+        return LeaveReportRequestDto.builder().days(days).build();
     }
 }

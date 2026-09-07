@@ -9,7 +9,9 @@ import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.List;
 
+import att.dto.LeaveReportRequestDto;
 import att.dto.SessionDataDto;
 import att.model.DataTime;
 
@@ -193,6 +195,24 @@ public class SecurityControlTest extends BaseApiControllerTest {
         assertEquals(recordCountBefore, countAfter,
                 String.format("Reason: total count of attendance record should not be changed ,expected:%s ,exist:%s",
                         recordCountBefore, countAfter));
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("POST /attendance/addLeaveDays as non-admin returns 403")
+    void addLeaveDaysForbiddenTest() {
+        long countBefore = leaveDaysRepository.count();
+        LeaveReportRequestDto task = generateLeaveReportRequestDto(
+                List.of(generateLeaveDayEntryDto(LocalDate.parse("2024-01-15"), 1.0, null)));
+
+        ResponseEntity<String> response = sendRequestWithUserRole(HttpMethod.POST, ADD_LEAVE_DAYS_URL,
+                USER_ID, 123, task, jwtTokenUserTenant_123);
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+        assertEquals(ACCESS_DENIED, errorMessage(response));
+
+        long countAfter = leaveDaysRepository.count();
+        assertEquals(countBefore, countAfter,
+                "Reason: no leave day rows should be persisted for a forbidden request");
     }
 
 }

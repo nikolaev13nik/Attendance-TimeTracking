@@ -648,31 +648,42 @@ definitions:
         description: Number of sick days taken
         example: 1
 
+
   LeaveReportRequestDto:
     type: object
-    description: Payload containing report creation date and detailed lists of vacation and sick leave dates
+    description: Batch of leave-day entries to add/update for a user
     required:
-      - reportDate
+      - days
     properties:
-      reportDate:
+      days:
+        type: array
+        minItems: 1
+        description: One entry per date
+        items:
+          $ref: '#/definitions/LeaveDayEntryDto'
+
+  LeaveDayEntryDto:
+    type: object
+    description: |
+      Leave taken on a single date. A date may have a vacation amount, a sick
+      amount, both (e.g. half+half), or - if you allow clearing - neither.
+    required:
+      - date
+    properties:
+      date:
         type: string
         format: date
-        description: Date when the report was submitted (YYYY-MM-DD)
-        example: "2026-09-03"
-      vacationDays:
-        type: array
-        description: List of specific dates taken as vacation leave
-        items:
-          type: string
-          format: date
-          example: "2026-09-10"
-      sickDays:
-        type: array
-        description: List of specific dates taken as sick leave
-        items:
-          type: string
-          format: date
-          example: "2026-09-11"
+        example: "2026-09-10"
+      vacationAmount:
+        type: number
+        format: double
+        description: 1.0 = full vacation day, 0.5 = half; omit if no vacation on this date
+        example: 1.0
+      sickAmount:
+        type: number
+        format: double
+        description: 1.0 = full sick day, 0.5 = half; omit if no sick day on this date
+        example: 0.5
 
   ApiError:
     type: object

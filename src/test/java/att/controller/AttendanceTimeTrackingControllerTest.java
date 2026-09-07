@@ -13,10 +13,15 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import att.dto.DataTimeDto;
+import att.dto.LeaveDayEntryDto;
+import att.dto.LeaveReportRequestDto;
 import att.dto.SessionDataDto;
+import att.model.LeaveDay;
+import att.model.LeaveType;
 
 import static att.exceptions.ErrorConstants.ATTENDANCE_NOT_FOUND_MSG;
 import static att.exceptions.ErrorConstants.INCOMPLETE_SESSIONS_MSG;
+import static att.exceptions.ErrorConstants.LEAVE_DAY_AMOUNT_EXCEEDS_FULL_DAY_MSG;
 import static att.exceptions.ErrorConstants.OPEN_CLOSE_DATE_MISSING_MSG;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -375,5 +380,42 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
         assertEquals(recordCountBefore, countAfter,
                 String.format("Reason: total count of attendance record should not be changed ,expected:%s ,exist:%s",
                         recordCountBefore, countAfter));
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("add leave days as admin - positive")
+    void addLeaveDaysTest() {
+        List<LeaveDayEntryDto> days = List.of(
+                generateLeaveDayEntryDto(LocalDate.parse("2024-01-15"), 1.0, null),
+                generateLeaveDayEntryDto(LocalDate.parse("2024-01-16"), 0.5, 0.5),
+                generateLeaveDayEntryDto(LocalDate.parse("2024-01-17"), null, null),
+                generateLeaveDayEntryDto(LocalDate.parse("2024-01-20"), null, 1.0));
+        LeaveReportRequestDto task = generateLeaveReportRequestDto(days);
+
+        ResponseEntity<String> response = sendRequestWithAdmin(HttpMethod.POST, ADD_LEAVE_DAYS_URL, USER_ID, 2, task);
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+
+        List<LeaveDay> saved = leaveDaysRepository.findByLeaveDayKeyTenantIdAndLeaveDayKeyIdUser(2, USER_ID);
+        assertEquals(4, saved.size());
+        assertTrue(saved.stream().anyMatch(d -> d.getLeaveDayKey().getLeaveDate().equals(LocalDate.parse("2024-01-15"))
+                && d.getLeaveDayKey().getLeaveType() == LeaveType.VACATION && d.getAmount() == 1.0));
+        assertTrue(saved.stream().anyMatch(d -> d.getLeaveDayKey().getLeaveDate().equals(LocalDate.parse("2024-01-16"))
+                && d.getLeaveDayKey().getLeaveType() == LeaveType.VACATION && d.getAmount() == 0.5));
+        assertTrue(saved.stream().anyMatch(d -> d.getLeaveDayKey().getLeaveDate().equals(LocalDate.parse("2024-01-16"))
+                && d.getLeaveDayKey().getLeaveType() == LeaveType.SICK && d.getAmount() == 0.5));
+        assertTrue(saved.stream().anyMatch(d -> d.getLeaveDayKey().getLeaveDate().equals(LocalDate.parse("2024-01-20"))
+                && d.getLeaveDayKey().getLeaveType() == LeaveType.SICK && d.getAmount() == 1.0));
+
+        // negative case
+        LocalDate reportDate = LocalDate.parse(
+                "2024-01-20");
+        LeaveReportRequestDto task2 = generateLeaveReportRequestDto(List.of(generateLeaveDayEntryDto(reportDate,
+                1.0, 0.5)));
+
+        ResponseEntity<String> response2 = sendRequestWithAdmin(HttpMethod.POST, ADD_LEAVE_DAYS_URL, USER_ID, 2, task2);
+        assertEquals(HttpStatus.BAD_REQUEST, response2.getStatusCode());
+        assertEquals(String.format(LEAVE_DAY_AMOUNT_EXCEEDS_FULL_DAY_MSG, reportDate, 1.0, 0.5),
+                errorMessage(response2));
     }
 }

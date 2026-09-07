@@ -8,6 +8,7 @@ import java.util.List;
 import att.dto.DataTimeDto;
 import att.dto.EditDataTimeUserDto;
 import att.model.DataTime;
+import att.model.LeaveDay;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -34,6 +35,8 @@ public class DataTimeContext<T> {
     private Integer tenantId;
     @Builder.Default
     private List<DataTime> userWorkSessionList = new ArrayList<>();
+    @Builder.Default
+    private List<LeaveDay> userLeaveDaysList = new ArrayList<>();
     @Builder.Default
     private LocalDate currentLocalDate = LocalDate.now();
     // output
