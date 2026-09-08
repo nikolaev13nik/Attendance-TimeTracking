@@ -3,15 +3,13 @@ package att.exceptions;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
-@ResponseStatus(code = HttpStatus.BAD_GATEWAY)
-public class AccountingServiceException extends RuntimeException {
 
-    /**
-     *
-     */
+@ResponseStatus(code = HttpStatus.INTERNAL_SERVER_ERROR)
+public class InternalApiException extends RuntimeException {
+
     private static final long serialVersionUID = 1L;
 
-    public AccountingServiceException(String msg, Throwable cause) {
+    public InternalApiException(String msg, Throwable cause) {
         super(msg, cause);
     }
 }

@@ -15,12 +15,8 @@ import java.time.Duration;
 
 import att.client.accounting.api.AccountApi;
 import att.client.accounting.support.ApiClient;
+import att.client.common.InternalApiResponseErrorHandler;
 
-/**
- * Wires the generated Attendance-Accounting Account API client ({@link AccountApi}) with this
- * service's base URL/timeout config and forwards the caller's own inbound JWT on every outbound
- * call, mirroring how {@link att.security.TenantInterceptor} reads the JWT principal.
- */
 @Configuration
 public class AccountingClientConfiguration {
 
@@ -45,6 +41,7 @@ public class AccountingClientConfiguration {
                 .baseUrl(baseUrl)
                 .requestFactory(requestFactory)
                 .requestInterceptor(forwardCallerJwtInterceptor())
+                .defaultStatusHandler(new InternalApiResponseErrorHandler("attendance-accounting"))
                 .build();
 
         return new AccountApi(new ApiClient(restClient));

@@ -15,7 +15,7 @@ import java.util.Set;
 
 import att.client.accounting.api.AccountApi;
 import att.client.accounting.dto.UserProfileDto;
-import att.exceptions.AccountingServiceException;
+import att.exceptions.InternalApiException;
 import att.exceptions.NotFoundException;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
@@ -27,13 +27,8 @@ import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-/**
- * Not a controller test - doesn't follow {@code BaseApiControllerTest}'s full-app-over-RestTemplate
- * pattern, since that convention covers this service's own inbound endpoints. This exercises the
- * new outbound collaborator ({@link AccountingClient}) against a stubbed attendance-accounting
- * server, without booting the Spring context.
- */
-class AccountingClientTest {
+
+class AccountingClientConfigurationTest {
 
     private static final Integer ID_USER = 42;
     private static final String TOKEN_VALUE = "caller-jwt-token";
@@ -41,14 +36,13 @@ class AccountingClientTest {
     static WireMockExtension wireMock = WireMockExtension.newInstance().options(
             com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig().dynamicPort()).build();
 
-    private AccountingClient buildClientPointedAtWireMock() {
+    private AccountApi buildAccountApiPointedAtWireMock() {
         AccountingClientConfiguration configuration = new AccountingClientConfiguration();
         ReflectionTestUtils.setField(configuration, "baseUrl", wireMock.baseUrl());
         ReflectionTestUtils.setField(configuration, "connectTimeoutMs", 2000L);
         ReflectionTestUtils.setField(configuration, "readTimeoutMs", 5000L);
 
-        AccountApi accountApi = configuration.accountApi();
-        return new AccountingClient(accountApi);
+        return configuration.accountApi();
     }
 
     private void authenticateAs(String tokenValue) {
@@ -72,7 +66,7 @@ class AccountingClientTest {
         wireMock.stubFor(get(urlEqualTo("/account/user/" + ID_USER)).willReturn(okJson(
                 "{\"idUser\":42,\"firstName\":\"Jane\",\"lastName\":\"Doe\",\"roles\":[\"USER\"]}")));
 
-        UserProfileDto result = buildClientPointedAtWireMock().getUserInfo(ID_USER);
+        UserProfileDto result = buildAccountApiPointedAtWireMock().getUserInfo(ID_USER);
 
         assertEquals(ID_USER, result.getIdUser());
         assertEquals("Jane", result.getFirstName());
@@ -87,15 +81,15 @@ class AccountingClientTest {
         authenticateAs(TOKEN_VALUE);
         wireMock.stubFor(get(urlEqualTo("/account/user/" + ID_USER)).willReturn(aResponse().withStatus(404)));
 
-        assertThrows(NotFoundException.class, () -> buildClientPointedAtWireMock().getUserInfo(ID_USER));
+        assertThrows(NotFoundException.class, () -> buildAccountApiPointedAtWireMock().getUserInfo(ID_USER));
     }
 
     @Test
-    void getUserInfo_upstreamFailure_throwsAccountingServiceException() {
+    void getUserInfo_upstreamFailure_throwsInternalApiException() {
         authenticateAs(TOKEN_VALUE);
         wireMock.stubFor(get(urlEqualTo("/account/user/" + ID_USER)).willReturn(aResponse().withStatus(500)));
 
-        assertThrows(AccountingServiceException.class, () -> buildClientPointedAtWireMock().getUserInfo(ID_USER));
+        assertThrows(InternalApiException.class, () -> buildAccountApiPointedAtWireMock().getUserInfo(ID_USER));
     }
 
     @Test
@@ -103,7 +97,7 @@ class AccountingClientTest {
         wireMock.stubFor(get(urlEqualTo("/account/user/" + ID_USER)).willReturn(okJson(
                 "{\"idUser\":42,\"firstName\":\"Jane\",\"lastName\":\"Doe\",\"roles\":[]}")));
 
-        buildClientPointedAtWireMock().getUserInfo(ID_USER);
+        buildAccountApiPointedAtWireMock().getUserInfo(ID_USER);
 
         wireMock.verify(getRequestedFor(urlEqualTo("/account/user/" + ID_USER))
                 .withoutHeader("Authorization"));
