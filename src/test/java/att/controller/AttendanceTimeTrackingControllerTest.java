@@ -9,12 +9,14 @@ import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import att.dto.DataTimeDto;
 import att.dto.LeaveDayEntryDto;
 import att.dto.LeaveReportRequestDto;
+import att.dto.MonthlyUserStatisticInfoDto;
 import att.dto.SessionDataDto;
 import att.model.LeaveDay;
 import att.model.LeaveType;
@@ -417,5 +419,129 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
         assertEquals(HttpStatus.BAD_REQUEST, response2.getStatusCode());
         assertEquals(String.format(LEAVE_DAY_AMOUNT_EXCEEDS_FULL_DAY_MSG, reportDate, 1.0, 0.5),
                 errorMessage(response2));
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("GET month statistic as admin - single user")
+    void getMonthStatisticSingleUser_withVacationAndSickDaysTest() {
+        // preparation for test
+        // close the blocking session so the month has no incomplete sessions
+        ResponseEntity<String> editResponse = sendRequestWithAdmin(HttpMethod.POST, EDIT_URL,
+                null, 2, createEditDataTimeUserDto(SEEDED_OPEN_ID, null,
+                        OffsetDateTime.parse("2024-01-04T17:30:00Z")));
+        assertEquals(HttpStatus.OK, editResponse.getStatusCode());
+
+        LeaveReportRequestDto leaveReport = generateLeaveReportRequestDto(List.of(
+                generateLeaveDayEntryDto(LocalDate.parse("2024-01-25"), 0.5, 0.5),
+                generateLeaveDayEntryDto(LocalDate.parse("2024-01-26"), null, 0.5),
+                generateLeaveDayEntryDto(LocalDate.parse("2024-01-27"), 0.5, null)));
+        ResponseEntity<String> leaveResponse =
+                sendRequestWithAdmin(HttpMethod.POST, ADD_LEAVE_DAYS_URL, USER_ID, 2, leaveReport);
+        assertEquals(HttpStatus.OK, leaveResponse.getStatusCode());
+
+        ResponseEntity<String> response = sendRequestWithAdmin(HttpMethod.GET,
+                statistic(STATISTIC_URL, "2024-01", USER_ID), null, 2, null);
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+
+        List<MonthlyUserStatisticInfoDto> body = readList(response, MonthlyUserStatisticInfoDto.class);
+        assertEquals(1, body.size());
+        MonthlyUserStatisticInfoDto stat = body.get(0);
+        assertEquals(2, stat.getTenantId());
+        assertEquals(USER_ID, stat.getUserId());
+        assertEquals(YearMonth.parse("2024-01"), stat.getYearMonth());
+        assertEquals(3, stat.getWorkDays());
+        assertEquals(25L, stat.getTotalWorkHours());
+        assertEquals(1L, stat.getOvertimeHours());
+        assertEquals(1, stat.getVacationDays());
+        assertEquals(1, stat.getSickDays());
+
+        // db state validation
+        verifyMonthStatisticDbState(stat, 2);
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("GET month statistic as admin - incomplete session rejects the request")
+    void getMonthStatisticIncompleteSessionTest() {
+        long countBefore = monthStatisticRepository.count();
+
+        // SEEDED_OPEN_ID (1003) is left unclosed and falls inside the queried month
+        ResponseEntity<String> response = sendRequestWithAdmin(HttpMethod.GET,
+                statistic(STATISTIC_URL, "2024-01", USER_ID), null, 2, null);
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(INCOMPLETE_SESSIONS_MSG, errorMessage(response));
+
+        assertEquals(countBefore, monthStatisticRepository.count(),
+                "Reason: no statistic row should be persisted for a rejected request");
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("GET month statistic as admin - idUser omitted covers every user seeded under the tenant")
+    void getMonthStatisticAllUsersTest() {
+        // close the blocking session so user 2's month has no incomplete sessions
+        ResponseEntity<String> editResponse = sendRequestWithAdmin(HttpMethod.POST, EDIT_URL,
+                null, 2, createEditDataTimeUserDto(SEEDED_OPEN_ID, null,
+                        OffsetDateTime.parse("2024-01-04T17:30:00Z")));
+        assertEquals(HttpStatus.OK, editResponse.getStatusCode());
+
+        // user 2: worked sessions + leave days
+        ResponseEntity<String> leaveUser2 = sendRequestWithAdmin(HttpMethod.POST, ADD_LEAVE_DAYS_URL, USER_ID, 2,
+                generateLeaveReportRequestDto(List.of(
+                        generateLeaveDayEntryDto(LocalDate.parse("2024-01-25"), 1.0, null),
+                        generateLeaveDayEntryDto(LocalDate.parse("2024-01-26"), null, 1.0))));
+        assertEquals(HttpStatus.OK, leaveUser2.getStatusCode());
+
+        // user 3 (OTHER_USER_ID): no worked sessions under this tenant, only leave days
+        ResponseEntity<String> leaveUser3 = sendRequestWithAdmin(HttpMethod.POST, ADD_LEAVE_DAYS_URL, OTHER_USER_ID, 2,
+                generateLeaveReportRequestDto(List.of(
+                        generateLeaveDayEntryDto(LocalDate.parse("2024-01-10"), 1.0, null),
+                        generateLeaveDayEntryDto(LocalDate.parse("2024-01-11"), null, 1.0))));
+        assertEquals(HttpStatus.OK, leaveUser3.getStatusCode());
+
+        ResponseEntity<String> response = sendRequestWithAdmin(HttpMethod.GET,
+                statistic(STATISTIC_URL, "2024-01"), null, 2, null);
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+
+        List<MonthlyUserStatisticInfoDto> body = readList(response, MonthlyUserStatisticInfoDto.class);
+        assertEquals(2, body.size());
+
+        MonthlyUserStatisticInfoDto user2Stat =
+                body.stream().filter(s -> USER_ID.equals(s.getUserId())).findFirst().orElseThrow();
+        assertEquals(3, user2Stat.getWorkDays());
+        assertEquals(25L, user2Stat.getTotalWorkHours());
+        assertEquals(1L, user2Stat.getOvertimeHours());
+        assertEquals(1, user2Stat.getVacationDays());
+        assertEquals(1, user2Stat.getSickDays());
+
+        MonthlyUserStatisticInfoDto user3Stat =
+                body.stream().filter(s -> OTHER_USER_ID.equals(s.getUserId())).findFirst().orElseThrow();
+        assertEquals(0, user3Stat.getWorkDays());
+        assertEquals(0L, user3Stat.getTotalWorkHours());
+        assertEquals(0L, user3Stat.getOvertimeHours());
+        assertEquals(1, user3Stat.getVacationDays());
+        assertEquals(1, user3Stat.getSickDays());
+
+        // db state validations
+        verifyMonthStatisticDbState(user2Stat, 2);
+        verifyMonthStatisticDbState(user3Stat, 2);
+        assertEquals(2, monthStatisticRepository.count());
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("GET month statistic as admin - idUser omitted, one incomplete user aborts the whole batch")
+    void getMonthStatisticAllUsersIncompleteAbortsTest() {
+        long countBefore = monthStatisticRepository.count();
+
+        // SEEDED_OPEN_ID (1003) is left unclosed for user 2 under tenant 2
+        ResponseEntity<String> response = sendRequestWithAdmin(HttpMethod.GET,
+                statistic(STATISTIC_URL, "2024-01"), null, 2, null);
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(INCOMPLETE_SESSIONS_MSG, errorMessage(response));
+
+        assertEquals(countBefore, monthStatisticRepository.count(),
+                "Reason: no statistic row should be persisted when the batch is rejected");
     }
 }

@@ -21,13 +21,17 @@ import java.util.Objects;
 import java.util.Optional;
 
 import att.dao.LeaveDaysRepository;
+import att.dao.MonthStatisticRepository;
 import att.dao.SessionAttendanceTimeRepository;
 import att.dto.DataTimeDto;
 import att.dto.EditDataTimeUserDto;
 import att.dto.LeaveDayEntryDto;
 import att.dto.LeaveReportRequestDto;
+import att.dto.MonthlyUserStatisticInfoDto;
 import att.dto.SessionDataDto;
 import att.model.DataTime;
+import att.model.MonthStatistic;
+import att.model.MonthStatisticKey;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -66,12 +70,16 @@ public abstract class BaseApiControllerTest {
     protected static final String CHECK_URL = BASE_SUFFIX_URL + "/check" + TENANT_ID_URL + "/user/%s";
     protected static final String REMOVE_URL = BASE_SUFFIX_URL + "/sessionRemove" + TENANT_ID_URL + "/session/%s";
     protected static final String ADD_LEAVE_DAYS_URL = BASE_SUFFIX_URL + "/addLeaveDays/tenant/%s/userId/%s";
+    protected static final String STATISTIC_URL = BASE_SUFFIX_URL + "/statistic" + TENANT_ID_URL;
 
     @Autowired
     protected SessionAttendanceTimeRepository sessionAttendanceTimeRepository;
 
     @Autowired
     protected LeaveDaysRepository leaveDaysRepository;
+
+    @Autowired
+    protected MonthStatisticRepository monthStatisticRepository;
 
     protected static final String RANGE_START = "2024-01-01";
     protected static final String RANGE_END = "2024-01-31";
@@ -233,12 +241,39 @@ public abstract class BaseApiControllerTest {
         assertEquals(tenant, body.getTenantId());
     }
 
+    protected void verifyMonthStatisticDbState(MonthlyUserStatisticInfoDto stat, int tenantId) {
+        MonthStatisticKey key = new MonthStatisticKey(tenantId, stat.getUserId(), stat.getYearMonth().atDay(1));
+        Optional<MonthStatistic> saved = monthStatisticRepository.findById(key);
+        assertTrue(saved.isPresent(),
+                String.format("Reason: expected a persisted MonthStatistic row for tenant:%s user:%s month:%s",
+                        tenantId, stat.getUserId(), stat.getYearMonth()));
+        MonthStatistic entity = saved.get();
+        assertEquals(stat.getWorkDays(), entity.getWorkDays(),
+                "Reason: db workDays should match the API response");
+        assertEquals(stat.getTotalWorkHours().intValue(), entity.getTotalWorkHours(),
+                "Reason: db totalWorkHours should match the API response");
+        assertEquals(stat.getOvertimeHours().intValue(), entity.getOvertimeHours(),
+                "Reason: db overtimeHours should match the API response");
+        assertEquals(stat.getVacationDays(), entity.getVacationDays(),
+                "Reason: db vacationDays should match the API response");
+        assertEquals(stat.getSickDays(), entity.getSickDays(),
+                "Reason: db sickDays should match the API response");
+    }
+
     protected String range(String base, int idUser) {
         return base + "?startDate=" + RANGE_START + "&endDate=" + RANGE_END + "&idUser=" + idUser;
     }
 
     protected String range(String base) {
         return base + "?startDate=" + RANGE_START + "&endDate=" + RANGE_END;
+    }
+
+    protected String statistic(String base, String targetMonth) {
+        return base + "?targetMonth=" + targetMonth;
+    }
+
+    protected String statistic(String base, String targetMonth, int idUser) {
+        return statistic(base, targetMonth) + "&idUser=" + idUser;
     }
 
     protected SessionDataDto generateSessionDataDto(LocalDate workDate, OffsetDateTime openDate,

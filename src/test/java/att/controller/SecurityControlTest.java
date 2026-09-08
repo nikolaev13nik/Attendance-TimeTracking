@@ -215,4 +215,20 @@ public class SecurityControlTest extends BaseApiControllerTest {
                 "Reason: no leave day rows should be persisted for a forbidden request");
     }
 
+    @Test
+    @FlywayTest
+    @DisplayName("get month statistic (non-admin) - negative")
+    void getMonthStatisticForbiddenTest() {
+        long countBefore = monthStatisticRepository.count();
+
+        ResponseEntity<String> response = sendRequestWithUserRole(HttpMethod.GET,
+                statistic(STATISTIC_URL, "2024-01", USER_ID), null, 123, null, jwtTokenUserTenant_123);
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+        assertEquals(ACCESS_DENIED, errorMessage(response));
+
+        long countAfter = monthStatisticRepository.count();
+        assertEquals(countBefore, countAfter,
+                "Reason: no statistic row should be persisted for a forbidden request");
+    }
+
 }
