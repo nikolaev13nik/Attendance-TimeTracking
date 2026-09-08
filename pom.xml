@@ -22,6 +22,7 @@
 		<mapstruct.version>1.6.3</mapstruct.version>
 		<openapi-generator.version>7.23.0</openapi-generator.version>
 		<swagger-annotations.version>2.2.43</swagger-annotations.version>
+        <wiremock.version>3.9.2</wiremock.version>
 	</properties>
 
 	<dependencies>
@@ -121,6 +122,12 @@
 			</artifactId>
 			<version>3.17.0
 			</version>
+        </dependency>
+        <dependency>
+            <groupId>org.wiremock</groupId>
+            <artifactId>wiremock-standalone</artifactId>
+            <version>${wiremock.version}</version>
+            <scope>test</scope>
 		</dependency>
 	</dependencies>
 
@@ -208,6 +215,36 @@
 							</configOptions>
 						</configuration>
 					</execution>
+                    <execution>
+                        <id>generate-accounting-client</id>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <configuration>
+                            <inputSpec>
+                                ${project.basedir}/src/main/resources/swagger-source/attendance-accounting-account.yaml
+                            </inputSpec>
+                            <generatorName>java</generatorName>
+                            <library>restclient</library>
+                            <apiPackage>att.client.accounting.api</apiPackage>
+                            <modelPackage>att.client.accounting.dto</modelPackage>
+                            <invokerPackage>att.client.accounting.support</invokerPackage>
+                            <generateSupportingFiles>true</generateSupportingFiles>
+                            <generateApiTests>false</generateApiTests>
+                            <generateApiDocumentation>false</generateApiDocumentation>
+                            <generateModelTests>false</generateModelTests>
+                            <generateModelDocumentation>false</generateModelDocumentation>
+                            <configOptions>
+                                <useTags>true</useTags>
+                                <dateLibrary>java8-localdatetime</dateLibrary>
+                                <serializableModel>true</serializableModel>
+                                <useSpringBoot4>true</useSpringBoot4>
+                                <useJackson3>true</useJackson3>
+                                <openApiNullable>false</openApiNullable>
+                                <documentationProvider>none</documentationProvider>
+                            </configOptions>
+                        </configuration>
+                    </execution>
 				</executions>
 			</plugin>
 		</plugins>
@@ -227,6 +264,10 @@
 								<!-- OpenAPI-generated API interfaces and DTOs (target/generated-sources/openapi) -->
 								<exclude>att/api/**</exclude>
 								<exclude>att/dto/**</exclude>
+                                <!-- OpenAPI-generated outbound client for attendance-accounting -->
+                                <exclude>att/client/accounting/api/**</exclude>
+                                <exclude>att/client/accounting/dto/**</exclude>
+                                <exclude>att/client/accounting/support/**</exclude>
 								<!-- MapStruct-generated mapper implementations (target/generated-sources/annotations) -->
 								<exclude>att/mapper/*Impl.class</exclude>
 								<!-- Boot entrypoint: just SpringApplication.run, no branching logic -->
