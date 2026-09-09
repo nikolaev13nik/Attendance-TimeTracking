@@ -23,7 +23,7 @@ public class AddLeaveDaysService extends DataTimeServiceBase<LeaveReportRequestD
     private LeaveDayMapper leaveDayMapper;
 
     @Override
-    protected void fetchAndValidate(DataTimeContext<LeaveReportRequestDto> context) {
+    protected void validate(DataTimeContext<LeaveReportRequestDto> context) {
         context.getTask().getDays().forEach(day -> {
             double vacation = day.getVacationAmount() != null ? day.getVacationAmount() : 0.0;
             double sick = day.getSickAmount() != null ? day.getSickAmount() : 0.0;
@@ -47,10 +47,5 @@ public class AddLeaveDaysService extends DataTimeServiceBase<LeaveReportRequestD
             }
         });
         context.setUserLeaveDaysList(leaveDays);
-    }
-
-    @Override
-    protected void mapResult(DataTimeContext<LeaveReportRequestDto> context) {
-        // addLeaveDays returns ResponseEntity<Void> - nothing to map back
     }
 }

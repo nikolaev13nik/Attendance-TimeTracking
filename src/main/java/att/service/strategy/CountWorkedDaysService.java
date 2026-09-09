@@ -12,13 +12,13 @@ import static org.hibernate.internal.util.collections.CollectionHelper.isNotEmpt
 public class CountWorkedDaysService extends BaseGetService<Void> {
 
     @Override
-    protected void fetchAndValidate(DataTimeContext<Void> context) {
+    protected void fetch(DataTimeContext<Void> context) {
         if (isNotEmpty(fetchIncompleteSessions(context.getTenantId(), context.getIdUser(),
                 context.getStartDate(), context.getEndDate()))) {
             throw new BadRequestException(INCOMPLETE_SESSIONS_MSG);
         }
-        context.setTotalDays(
-                timeRepository.countByTenantIdAndIdUserAndWorkDateBetween(context.getTenantId(), context.getIdUser(),
-                        context.getStartDate(), context.getEndDate()));
+        Long days = timeRepository.countByTenantIdAndIdUserAndWorkDateBetween(context.getTenantId(),
+                context.getIdUser(), context.getStartDate(), context.getEndDate());
+        context.getTotalDaysPerUser().put(context.getIdUser(), days);
     }
 }

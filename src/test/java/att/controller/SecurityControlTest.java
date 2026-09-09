@@ -131,10 +131,10 @@ public class SecurityControlTest extends BaseApiControllerTest {
 
     @Test
     @FlywayTest
-    @DisplayName("GET /record/hours as non-admin returns 403")
-    void hoursForbiddenTest() {
+    @DisplayName("GET /record/minutes as non-admin returns 403")
+    void minutesForbiddenTest() {
         long recordCountBefore = sessionAttendanceTimeRepository.count();
-        ResponseEntity<String> response = sendRequestWithUserRole(HttpMethod.GET, range(HOURS_URL
+        ResponseEntity<String> response = sendRequestWithUserRole(HttpMethod.GET, range(MINUTES_URL
                 , USER_ID), null, 123, null, jwtTokenUserTenant_123);
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
         assertEquals(ACCESS_DENIED, errorMessage(response));
@@ -147,11 +147,11 @@ public class SecurityControlTest extends BaseApiControllerTest {
 
     @Test
     @FlywayTest
-    @DisplayName("GET /record/overtime as non-admin returns 403")
-    void overtimeForbiddenTest() {
+    @DisplayName("GET /record/overtimeMinutes as non-admin returns 403")
+    void overtimeMinutesForbiddenTest() {
         long recordCountBefore = sessionAttendanceTimeRepository.count();
         ResponseEntity<String> response = sendRequestWithUserRole(HttpMethod.GET,
-                range(OVERTIME_URL, USER_ID), 1, 123, null, jwtTokenUserTenant_123);
+                range(OVERTIME_MINUTES_URL, USER_ID), 1, 123, null, jwtTokenUserTenant_123);
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
         assertEquals(ACCESS_DENIED, errorMessage(response));
 

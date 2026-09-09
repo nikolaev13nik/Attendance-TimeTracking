@@ -13,7 +13,7 @@ import static java.util.Optional.ofNullable;
 public class SessionChangeService extends DataTimeServiceBase<EditDataTimeUserDto> {
 
     @Override
-    protected void fetchAndValidate(DataTimeContext<EditDataTimeUserDto> context) {
+    protected void fetch(DataTimeContext<EditDataTimeUserDto> context) {
         context.getUserWorkSessionList().add(findRecordOrThrow(context.getEditDto().getId()));
     }
 

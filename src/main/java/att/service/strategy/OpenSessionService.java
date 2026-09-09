@@ -23,7 +23,7 @@ public class OpenSessionService extends DataTimeServiceBase<SessionDataDto> {
     }
 
     @Override
-    protected void fetchAndValidate(DataTimeContext<SessionDataDto> context) {
+    protected void fetch(DataTimeContext<SessionDataDto> context) {
         if (isFalse(context.getWorkDate().equals(context.getCurrentLocalDate()))) {
             workDateMismatch(
                     String.format(WORK_DATE_MISMATCH_MSG, context.getWorkDate(), context.getCurrentLocalDate()));

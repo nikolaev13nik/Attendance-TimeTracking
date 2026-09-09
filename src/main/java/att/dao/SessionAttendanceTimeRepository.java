@@ -75,4 +75,9 @@ public interface SessionAttendanceTimeRepository extends JpaRepository<DataTime,
             @Param("userId") Integer userId,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate);
+
+    //todo:cammel case expression enoth without native query
+    @Query(value = "SELECT DISTINCT user_id FROM att_work_sessions WHERE tenant_id = :tenantId",
+            nativeQuery = true)
+    List<Integer> findDistinctUserIdsByTenantId(@Param("tenantId") Integer tenantId);
 }

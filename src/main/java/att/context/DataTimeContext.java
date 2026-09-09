@@ -3,7 +3,9 @@ package att.context;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import att.dto.DataTimeDto;
 import att.dto.EditDataTimeUserDto;
@@ -39,10 +41,19 @@ public class DataTimeContext<T> {
     private List<LeaveDay> userLeaveDaysList = new ArrayList<>();
     @Builder.Default
     private LocalDate currentLocalDate = LocalDate.now();
-    // output
-    private Long totalHours;
-    private Long totalDays;
-    private Long totalOvertimeHours;
+    // output - per user, keyed by idUser, so one context can be reused across a multi-user pipeline
+    // (e.g. StatisticInfoService) without one user's result overwriting another's
+    @Builder.Default
+    Map<Integer, Long> totalDaysPerUser = new HashMap<>();
+    @Builder.Default
+    Map<Integer, Long> totalWorkMinutesPerUser = new HashMap<>();
+    @Builder.Default
+    Map<Integer, Long> totalOvertimeMinutesPerUser = new HashMap<>();
+    @Builder.Default
+    Map<Integer, Double> vacationPerUser = new HashMap<>();
+    @Builder.Default
+    Map<Integer, Double> sickDayPerUser = new HashMap<>();
+
     @Builder.Default
     private List<DataTimeDto> responseDataTimeDto = new ArrayList<>();
     @Builder.Default

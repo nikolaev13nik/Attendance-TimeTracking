@@ -10,7 +10,7 @@ import att.service.base.DataTimeServiceBase;
 public class RemoveRecordService extends DataTimeServiceBase<DataTimeDto> {
 
     @Override
-    protected void fetchAndValidate(DataTimeContext<DataTimeDto> context) {
+    protected void fetch(DataTimeContext<DataTimeDto> context) {
         context.getUserWorkSessionList().add(findRecordOrThrow(context.getRecordId()));
     }
 

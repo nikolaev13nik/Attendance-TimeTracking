@@ -281,61 +281,10 @@ paths:
         '500':
           $ref: '#/responses/500-InternalServerError'
 
-  /attendance/hours/tenant/{tenantId}:
+  /attendance/minutes/tenant/{tenantId}:
     get:
-      summary: Calculates total worked hours for an employee within a date range
-      operationId: getAllHoursEmployeeBetweenDates
-      tags:
-        - Time Tracking
-      parameters:
-        - name: tenantId
-          in: path
-          description: |
-            Unique identifier of the tenant
-          required: true
-          type: integer
-          format: int32
-        - name: openSessionDate
-          in: query
-          description: |
-            Start date of the range (ISO format YYYY-MM-DD)
-          required: true
-          type: string
-          format: date
-        - name: closeSessionDate
-          in: query
-          description: |
-            Finish date of the range (ISO format YYYY-MM-DD)
-          required: true
-          type: string
-          format: date
-        - name: idUser
-          in: query
-          description: |
-            Unique identifier of the user
-          required: true
-          type: integer
-          format: int32
-      responses:
-        '200':
-          description: |
-            Total number of worked hours
-          schema:
-            type: integer
-            format: int64
-        '400':
-          $ref: '#/responses/400-BadRequest'
-        '401':
-          $ref: '#/responses/401-Unauthorized'
-        '403':
-          $ref: '#/responses/403-Forbidden'
-        '500':
-          $ref: '#/responses/500-InternalServerError'
-
-  /attendance/overtime/tenant/{tenantId}:
-    get:
-      summary: Calculates overtime hours for an employee within a date range
-      operationId: getOvertimeEmployeeBetweenDates
+      summary: Calculates total worked minutes for an employee within a date range
+      operationId: getAllMinutesEmployeeBetweenDates
       tags:
         - Time Tracking
       parameters:
@@ -370,7 +319,58 @@ paths:
       responses:
         '200':
           description: |
-            Total number of overtime hours
+            Total number of worked minutes
+          schema:
+            type: integer
+            format: int64
+        '400':
+          $ref: '#/responses/400-BadRequest'
+        '401':
+          $ref: '#/responses/401-Unauthorized'
+        '403':
+          $ref: '#/responses/403-Forbidden'
+        '500':
+          $ref: '#/responses/500-InternalServerError'
+
+  /attendance/overtimeMinutes/tenant/{tenantId}:
+    get:
+      summary: Calculates overtime minutes for an employee within a date range
+      operationId: getOvertimeMinutesEmployeeBetweenDates
+      tags:
+        - Time Tracking
+      parameters:
+        - name: tenantId
+          in: path
+          description: |
+            Unique identifier of the tenant
+          required: true
+          type: integer
+          format: int32
+        - name: startDate
+          in: query
+          description: |
+            Start date of the range (ISO format YYYY-MM-DD)
+          required: true
+          type: string
+          format: date
+        - name: endDate
+          in: query
+          description: |
+            Finish date of the range (ISO format YYYY-MM-DD)
+          required: true
+          type: string
+          format: date
+        - name: idUser
+          in: query
+          description: |
+            Unique identifier of the user
+          required: true
+          type: integer
+          format: int32
+      responses:
+        '200':
+          description: |
+            Total number of overtime minutes
           schema:
             type: integer
             format: int64
@@ -638,15 +638,15 @@ definitions:
         description: Total hours worked in the month
         example: 176
       vacationDays:
-        type: integer
-        format: int32
-        description: Number of approved vacation days taken
-        example: 2
+        type: number
+        format: double
+        description: Number of approved vacation days taken (fractional half-days allowed)
+        example: 2.0
       sickDays:
-        type: integer
-        format: int32
-        description: Number of sick days taken
-        example: 1
+        type: number
+        format: double
+        description: Number of sick days taken (fractional half-days allowed)
+        example: 1.0
 
 
   LeaveReportRequestDto:

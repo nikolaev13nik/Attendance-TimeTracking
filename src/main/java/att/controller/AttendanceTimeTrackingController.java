@@ -25,9 +25,9 @@ import att.service.strategy.AddLeaveDaysService;
 import att.service.strategy.CheckNullRowsService;
 import att.service.strategy.CloseSessionService;
 import att.service.strategy.CountWorkedDaysService;
-import att.service.strategy.GetHoursBetweenService;
-import att.service.strategy.GetOvertimeBetweenService;
+import att.service.strategy.GetOvertimeMinutesBetweenService;
 import att.service.strategy.GetRecordsByRangeService;
+import att.service.strategy.GetWorkedMinutesBetweenService;
 import att.service.strategy.OpenSessionService;
 import att.service.strategy.RemoveRecordService;
 import att.service.strategy.SessionChangeService;
@@ -44,8 +44,8 @@ public class AttendanceTimeTrackingController implements TimeTrackingApi {
     private final CountWorkedDaysService countWorkedDaysService;
     private final GetRecordsByRangeService getRecordsByRangeService;
     private final RemoveRecordService removeRecordService;
-    private final GetHoursBetweenService getHoursBetweenService;
-    private final GetOvertimeBetweenService getOvertimeBetweenService;
+    private final GetWorkedMinutesBetweenService getWorkedMinutesBetweenService;
+    private final GetOvertimeMinutesBetweenService getOvertimeMinutesBetweenService;
     private final CheckNullRowsService checkNullRowsService;
     private final StatisticInfoService statisticInfoService;
     private final AddLeaveDaysService addLeaveDaysService;
@@ -99,30 +99,30 @@ public class AttendanceTimeTrackingController implements TimeTrackingApi {
         DataTimeContext<Void> context = DataTimeContext.<Void>builder().idUser(idUser).startDate(startDate)
                 .endDate(endDate).tenantId(tenantId).build();
         countWorkedDaysService.execute(context);
-        return ResponseEntity.ok(context.getTotalDays());
+        return ResponseEntity.ok(context.getTotalDaysPerUser().get(idUser));
     }
 
     @PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")
-    public ResponseEntity<Long> getAllHoursEmployeeBetweenDates(@PathVariable Integer tenantId,
+    public ResponseEntity<Long> getAllMinutesEmployeeBetweenDates(@PathVariable Integer tenantId,
                                                                 @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate startDate,
                                                                 @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate endDate,
                                                                 @RequestParam Integer idUser) {
-        DataTimeContext<Long> context = DataTimeContext.<Long>builder().idUser(idUser).startDate(startDate)
+        DataTimeContext<Void> context = DataTimeContext.<Void>builder().idUser(idUser).startDate(startDate)
                 .tenantId(tenantId)
                 .endDate(endDate).build();
-        getHoursBetweenService.execute(context);
-        return ResponseEntity.ok(context.getTotalHours());
+        getWorkedMinutesBetweenService.execute(context);
+        return ResponseEntity.ok(context.getTotalWorkMinutesPerUser().get(idUser));
     }
 
     @PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")
-    public ResponseEntity<Long> getOvertimeEmployeeBetweenDates(@PathVariable Integer tenantId,
+    public ResponseEntity<Long> getOvertimeMinutesEmployeeBetweenDates(@PathVariable Integer tenantId,
                                                                 @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate startDate,
                                                                 @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate endDate,
                                                                 @RequestParam Integer idUser) {
-        DataTimeContext<Long> context = DataTimeContext.<Long>builder().idUser(idUser).startDate(startDate)
+        DataTimeContext<Void> context = DataTimeContext.<Void>builder().idUser(idUser).startDate(startDate)
                 .endDate(endDate).tenantId(tenantId).build();
-        getOvertimeBetweenService.execute(context);
-        return ResponseEntity.ok(context.getTotalOvertimeHours());
+        getOvertimeMinutesBetweenService.execute(context);
+        return ResponseEntity.ok(context.getTotalOvertimeMinutesPerUser().get(idUser));
     }
 
     @PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")
@@ -152,12 +152,11 @@ public class AttendanceTimeTrackingController implements TimeTrackingApi {
     @Override
     public ResponseEntity<List<MonthlyUserStatisticInfoDto>> getMonthStatistic(@PathVariable Integer tenantId,
                                                                                @RequestParam YearMonth targetMonth,
-                                                                               @RequestParam Integer idUser,
-                                                                               @RequestParam Boolean report) {
-        DataTimeContext<MonthlyUserStatisticInfoDto> context = DataTimeContext.<MonthlyUserStatisticInfoDto>builder()
-                .idUser(idUser)
-                .idUser(idUser)
-                .tenantId(tenantId).build();
+                                                                               @RequestParam(required = false) Integer idUser,
+                                                                               @RequestParam(required = false, defaultValue = "false")
+                                                                                   Boolean report) {
+        DataTimeContext<Void> context = DataTimeContext.<Void>builder()
+                .idUser(idUser).tenantId(tenantId).build();
         context.getStatisticInfoHolder().setReport(report);
         context.getStatisticInfoHolder().setStartOfMonth(targetMonth.atDay(1).atStartOfDay().atOffset(ZoneOffset.UTC));
         statisticInfoService.execute(context);

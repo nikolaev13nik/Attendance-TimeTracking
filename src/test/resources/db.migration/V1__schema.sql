@@ -27,8 +27,8 @@ CREATE TABLE att_month_statistic
     work_days        INTEGER NOT NULL,
     overtime_hours   INTEGER NOT NULL,
     total_work_hours INTEGER NOT NULL,
-    vacation_days    INTEGER NOT NULL,
-    sick_days        INTEGER NOT NULL,
+    vacation_days DOUBLE NOT NULL,
+    sick_days DOUBLE NOT NULL,
     updated_by       VARCHAR(255),
     sys_update_date  TIMESTAMP(6) WITH TIME ZONE,
 

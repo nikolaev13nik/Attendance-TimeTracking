@@ -9,10 +9,10 @@ import static att.exceptions.ErrorConstants.INCOMPLETE_SESSIONS_MSG;
 import static org.hibernate.internal.util.collections.CollectionHelper.isNotEmpty;
 
 @Service
-public class GetOvertimeBetweenService extends BaseGetService<Long> {
+public class GetOvertimeMinutesBetweenService extends BaseGetService<Void> {
 
     @Override
-    protected void fetchAndValidate(DataTimeContext<Long> context) {
+    protected void fetch(DataTimeContext<Void> context) {
         if (isNotEmpty(fetchIncompleteSessions(context.getTenantId(), context.getIdUser(),
                 context.getStartDate(), context.getEndDate()))) {
             throw new BadRequestException(INCOMPLETE_SESSIONS_MSG);
@@ -20,6 +20,6 @@ public class GetOvertimeBetweenService extends BaseGetService<Long> {
         Long result = timeRepository.calculateOvertimeMinutes(context.getTenantId(), context.getIdUser(),
                 context.getStartDate(),
                 context.getEndDate());
-        context.setTotalOvertimeHours(result == null ? 0 : result);
+        context.getTotalOvertimeMinutesPerUser().put(context.getIdUser(), result == null ? 0L : result);
     }
 }

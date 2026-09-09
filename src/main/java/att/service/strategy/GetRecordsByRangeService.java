@@ -9,7 +9,7 @@ import att.service.base.DataTimeServiceBase;
 public class GetRecordsByRangeService extends DataTimeServiceBase<Void> {
 
     @Override
-    protected void fetchAndValidate(DataTimeContext<Void> context) {
+    protected void fetch(DataTimeContext<Void> context) {
         context.setUserWorkSessionList(timeRepository.findByUserIdAndWorkDateBetween(context.getTenantId(),
                 context.getIdUser(),
                 context.getStartDate(), context.getEndDate()));

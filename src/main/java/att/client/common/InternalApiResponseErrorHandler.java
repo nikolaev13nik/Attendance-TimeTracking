@@ -11,14 +11,7 @@ import java.net.URI;
 import att.exceptions.InternalApiException;
 import att.exceptions.NotFoundException;
 
-/**
- * Global error handler for internal API clients. Registered once, per client, on that client's
- * {@code RestClient.Builder} via {@code defaultStatusHandler(...)} - it then runs for every non-2xx
- * response made through that client, so the generated API (e.g. {@link att.client.accounting.api.AccountApi})
- * can be injected and called directly, with no per-method try/catch. Adding the next endpoint on an
- * existing client, or wiring up a brand-new internal client, never needs new error-handling code - a
- * new client just constructs this same class with its own service name.
- */
+
 public class InternalApiResponseErrorHandler implements ResponseErrorHandler {
 
     private final String serviceName;

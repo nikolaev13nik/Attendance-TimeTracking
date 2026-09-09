@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import att.context.DataTimeContext;
 import att.dao.LeaveDaysRepository;
+import att.dao.MonthStatisticRepository;
 import att.dao.SessionAttendanceTimeRepository;
 import att.exceptions.ErrorConstants;
 import att.exceptions.NotFoundException;
@@ -18,9 +19,11 @@ public abstract class DataTimeServiceBase<R> implements BaseService<R> {
     @Autowired
     protected SessionAttendanceTimeRepository timeRepository;
     @Autowired
-    private LeaveDaysRepository leaveDaysRepository;
+    protected LeaveDaysRepository leaveDaysRepository;
     @Autowired
     protected SessionRecordMapper sessionRecordMapper;
+    @Autowired
+    private MonthStatisticRepository monthStatisticRepository;
 
     @PersistenceContext
     protected EntityManager em;
@@ -33,13 +36,17 @@ public abstract class DataTimeServiceBase<R> implements BaseService<R> {
 
     @Override
     public void executeWithoutTransactional(DataTimeContext<R> context) {
-        fetchAndValidate(context);
+        fetch(context);
+        validate(context);
         executeBusiness(context);
         persist(context);
         mapResult(context);
     }
 
-    protected void fetchAndValidate(DataTimeContext<R> context) {
+    protected void fetch(DataTimeContext<R> context) {
+    }
+
+    protected void validate(DataTimeContext<R> context) {
     }
 
     protected void executeBusiness(DataTimeContext<R> context) {
@@ -48,6 +55,7 @@ public abstract class DataTimeServiceBase<R> implements BaseService<R> {
     protected void persist(DataTimeContext<R> context) {
         timeRepository.saveAll(context.getUserWorkSessionList());
         leaveDaysRepository.saveAll(context.getUserLeaveDaysList());
+        monthStatisticRepository.saveAll(context.getStatisticInfoHolder().getMonthStatisticList());
     }
 
     protected void mapResult(DataTimeContext<R> context) {

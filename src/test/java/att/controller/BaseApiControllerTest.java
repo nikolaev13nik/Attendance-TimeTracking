@@ -65,8 +65,8 @@ public abstract class BaseApiControllerTest {
     protected static final String RECORDS_URL = BASE_SUFFIX_URL + "/sessions" + TENANT_ID_URL;
     protected static final String RANGE_RECORDS_URL = RECORDS_URL;
     protected static final String WORKDAYS_URL = BASE_SUFFIX_URL + "/workdays" + TENANT_ID_URL;
-    protected static final String HOURS_URL = BASE_SUFFIX_URL + "/hours" + TENANT_ID_URL;
-    protected static final String OVERTIME_URL = BASE_SUFFIX_URL + "/overtime" + TENANT_ID_URL;
+    protected static final String MINUTES_URL = BASE_SUFFIX_URL + "/minutes" + TENANT_ID_URL;
+    protected static final String OVERTIME_MINUTES_URL = BASE_SUFFIX_URL + "/overtimeMinutes" + TENANT_ID_URL;
     protected static final String CHECK_URL = BASE_SUFFIX_URL + "/check" + TENANT_ID_URL + "/user/%s";
     protected static final String REMOVE_URL = BASE_SUFFIX_URL + "/sessionRemove" + TENANT_ID_URL + "/session/%s";
     protected static final String ADD_LEAVE_DAYS_URL = BASE_SUFFIX_URL + "/addLeaveDays/tenant/%s/userId/%s";
