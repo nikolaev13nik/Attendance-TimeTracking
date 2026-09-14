@@ -452,8 +452,8 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
         assertEquals(USER_ID, stat.getUserId());
         assertEquals(YearMonth.parse("2024-01"), stat.getYearMonth());
         assertEquals(3, stat.getWorkDays());
-        assertEquals(25L, stat.getTotalWorkHours());
-        assertEquals(1L, stat.getOvertimeHours());
+        assertEquals(25.0, stat.getTotalWorkHours());
+        assertEquals(1.0, stat.getOvertimeHours());
         assertEquals(1.0, stat.getVacationDays());
         assertEquals(1.5, stat.getSickDays());
 
@@ -511,16 +511,16 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
         MonthlyUserStatisticInfoDto user2Stat =
                 body.stream().filter(s -> USER_ID.equals(s.getUserId())).findFirst().orElseThrow();
         assertEquals(3, user2Stat.getWorkDays());
-        assertEquals(25L, user2Stat.getTotalWorkHours());
-        assertEquals(1L, user2Stat.getOvertimeHours());
+        assertEquals(25.0, user2Stat.getTotalWorkHours());
+        assertEquals(1.0, user2Stat.getOvertimeHours());
         assertEquals(1.0, user2Stat.getVacationDays());
         assertEquals(1.0, user2Stat.getSickDays());
 
         MonthlyUserStatisticInfoDto user3Stat =
                 body.stream().filter(s -> OTHER_USER_ID.equals(s.getUserId())).findFirst().orElseThrow();
         assertEquals(0, user3Stat.getWorkDays());
-        assertEquals(0L, user3Stat.getTotalWorkHours());
-        assertEquals(0L, user3Stat.getOvertimeHours());
+        assertEquals(0.0, user3Stat.getTotalWorkHours());
+        assertEquals(0.0, user3Stat.getOvertimeHours());
         assertEquals(1.0, user3Stat.getVacationDays());
         assertEquals(1.0, user3Stat.getSickDays());
 

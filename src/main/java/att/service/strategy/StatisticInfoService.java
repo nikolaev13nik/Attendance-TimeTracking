@@ -42,18 +42,17 @@ public class StatisticInfoService extends BaseGetService<Void> {
         LocalDate monthEnd = targetMonth.atEndOfMonth(); //todo: change to local date in controller ?
         context.setStartDate(monthStart);
         context.setEndDate(monthEnd);
+        context.getStatisticInfoHolder().setTargetUserIds(resolveTargetUserIds(context));
+    }
 
-        Collection<Integer> targetUserIds = resolveTargetUserIds(context);
-        context.getStatisticInfoHolder().setTargetUserIds(targetUserIds);
-
-        for (Integer userId : targetUserIds) {
-            if (isNotEmpty(fetchIncompleteSessions(context.getTenantId(), userId, monthStart, monthEnd))) {
+    @Override
+    protected void validate(DataTimeContext<Void> context) {
+        context.getStatisticInfoHolder().getTargetUserIds().forEach(targetUserId -> {
+            if (isNotEmpty(fetchIncompleteSessions(context.getTenantId(), targetUserId, context.getStartDate(),
+                    context.getEndDate()))) {
                 throw new BadRequestException(INCOMPLETE_SESSIONS_MSG);
             }
-            //todo: here stored session of all users- change,and find should be in range
-            context.getUserWorkSessionList().addAll(
-                    timeRepository.findByUserIdAndWorkDateBetween(context.getTenantId(), userId, monthStart, monthEnd));
-        }
+        });
     }
 
     @Override
@@ -64,9 +63,9 @@ public class StatisticInfoService extends BaseGetService<Void> {
             // throwaway context per user per metric) - each delegate writes its result keyed by
             // userId into the context's per-user maps, so nothing gets overwritten between iterations
             context.setIdUser(userId);
-            countWorkedDaysService.executeWithoutTransactional(context);
-            getWorkedMinutesBetweenService.executeWithoutTransactional(context);
-            getOvertimeMinutesBetweenService.executeWithoutTransactional(context);
+            countWorkedDaysService.fetch(context);
+            getWorkedMinutesBetweenService.fetch(context);
+            getOvertimeMinutesBetweenService.fetch(context);
             populateLeaveDayTotals(context, userId);
 
             composeUserMonthStatistic(context, userId, targetMonth);
@@ -80,8 +79,8 @@ public class StatisticInfoService extends BaseGetService<Void> {
 
     private void composeUserMonthStatistic(DataTimeContext<Void> context, Integer userId, YearMonth targetMonth) {
         Integer workDays = context.getTotalDaysPerUser().get(userId).intValue();
-        long totalWorkHours = context.getTotalWorkMinutesPerUser().get(userId) / MINUTES_PER_HOUR;
-        long overtimeHours = context.getTotalOvertimeMinutesPerUser().get(userId) / MINUTES_PER_HOUR;
+        double totalWorkHours = context.getTotalWorkMinutesPerUser().get(userId) / (double) MINUTES_PER_HOUR;
+        double overtimeHours = context.getTotalOvertimeMinutesPerUser().get(userId) / (double) MINUTES_PER_HOUR;
         Double vacationDays = context.getVacationPerUser().get(userId);
         Double sickDays = context.getSickDayPerUser().get(userId);
 
@@ -91,7 +90,7 @@ public class StatisticInfoService extends BaseGetService<Void> {
                 .put(userId, context.getStatisticInfoHolder().getStartOfMonth(), dto);
 
         MonthStatistic entity = monthStatisticMapper.toEntity(context, userId, context.getStartDate(), workDays,
-                (int) overtimeHours, (int) totalWorkHours, vacationDays, sickDays);
+                overtimeHours, totalWorkHours, vacationDays, sickDays);
         context.getStatisticInfoHolder().getMonthStatisticList().add(entity);
     }
 

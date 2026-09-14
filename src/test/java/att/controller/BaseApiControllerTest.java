@@ -250,9 +250,9 @@ public abstract class BaseApiControllerTest {
         MonthStatistic entity = saved.get();
         assertEquals(stat.getWorkDays(), entity.getWorkDays(),
                 "Reason: db workDays should match the API response");
-        assertEquals(stat.getTotalWorkHours().intValue(), entity.getTotalWorkHours(),
+        assertEquals(stat.getTotalWorkHours(), entity.getTotalWorkHours(),
                 "Reason: db totalWorkHours should match the API response");
-        assertEquals(stat.getOvertimeHours().intValue(), entity.getOvertimeHours(),
+        assertEquals(stat.getOvertimeHours(), entity.getOvertimeHours(),
                 "Reason: db overtimeHours should match the API response");
         assertEquals(stat.getVacationDays(), entity.getVacationDays(),
                 "Reason: db vacationDays should match the API response");

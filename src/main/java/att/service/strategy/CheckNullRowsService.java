@@ -16,5 +16,8 @@ public class CheckNullRowsService extends BaseGetService<List<DataTimeDto>> {
                 context.getStartDate(), context.getEndDate()));
     }
 
-
+    @Override
+    protected void validate(DataTimeContext<List<DataTimeDto>> context) {
+        // no need validation
+    }
 }

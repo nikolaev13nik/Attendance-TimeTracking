@@ -628,15 +628,15 @@ definitions:
         description: Total number of days worked in the month
         example: 22
       overtimeHours:
-        type: integer
-        format: int64
+        type: number
+        format: double
         description: Total overtime hours worked in the month
-        example: 15
+        example: 15.5
       totalWorkHours:
-        type: integer
-        format: int64
+        type: number
+        format: double
         description: Total hours worked in the month
-        example: 176
+        example: 176.25
       vacationDays:
         type: number
         format: double

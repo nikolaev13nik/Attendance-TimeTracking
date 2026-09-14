@@ -29,9 +29,9 @@ public class MonthStatistic {
     @Column(name = "work_days")
     Integer workDays;
     @Column(name = "overtime_hours")
-    Integer overtimeHours;
+    Double overtimeHours;
     @Column(name = "total_work_hours")
-    Integer totalWorkHours;
+    Double totalWorkHours;
     @Column(name = "vacation_days")
     Double vacationDays;
     @Column(name = "sick_days")
