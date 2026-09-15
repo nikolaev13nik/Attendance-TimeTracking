@@ -436,8 +436,8 @@ paths:
           $ref: '#/responses/500-InternalServerError'
 
   /attendance/statistic/tenant/{tenantId}:
-    get:
-      summary: Retrieves statistic by tenant id and query parameters
+    post:
+      summary: Computes and persists statistic by tenant id and query parameters
       operationId: getMonthStatistic
       tags:
         - Time Tracking
@@ -647,6 +647,7 @@ definitions:
         format: double
         description: Number of sick days taken (fractional half-days allowed)
         example: 1.0
+
 
 
   LeaveReportRequestDto:

@@ -221,7 +221,7 @@ public class SecurityControlTest extends BaseApiControllerTest {
     void getMonthStatisticForbiddenTest() {
         long countBefore = monthStatisticRepository.count();
 
-        ResponseEntity<String> response = sendRequestWithUserRole(HttpMethod.GET,
+        ResponseEntity<String> response = sendRequestWithUserRole(HttpMethod.POST,
                 statistic(STATISTIC_URL, "2024-01", USER_ID), null, 123, null, jwtTokenUserTenant_123);
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
         assertEquals(ACCESS_DENIED, errorMessage(response));
