@@ -1,0 +1,42 @@
+spring:
+  cloud:
+    function:
+      definition: monthStatisticEnrichment
+    stream:
+      bindings:
+        monthStatisticProducer-out-0:
+          destination: att.month-statistic
+          content-type: application/json
+        monthStatisticEnrichment-in-0:
+          destination: att.month-statistic
+          group: att-service
+          content-type: application/json
+        statisticAnalysisRequestProducer-out-0:
+          destination: att.user-statistic-ai-analysis
+          content-type: application/json
+      kafka:
+        binder:
+          brokers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+        bindings:
+          monthStatisticProducer-out-0:
+            producer:
+              topic:
+                properties:
+                  partitions: 6
+                  replication.factor: 1
+          monthStatisticEnrichment-in-0:
+            consumer:
+              enableDlq: true
+              dlqName: att.month-statistic.dlq
+              retryable-exceptions:
+                jakarta.validation.ConstraintViolationException: false
+              topic:
+                properties:
+                  partitions: 6
+                  replication.factor: 1
+          statisticAnalysisRequestProducer-out-0:
+            producer:
+              topic:
+                properties:
+                  partitions: 6
+                  replication.factor: 1

@@ -93,9 +93,6 @@ return path.
 
 ### Known gaps (spec vs. current code — don't assume these exist)
 
-- `StatisticInfoService` (the `getMonthStatistic` endpoint's strategy) is a stub: vacation/sick-day
-  aggregation and persistence of monthly stats are marked TODO, not implemented.
-- `addLeaveDays` is unimplemented in the controller (returns `null`; call is commented out).
 - No Kafka integration, and no scheduled jobs exist in this codebase yet, despite that being part of
   the intended design (daily conflict detection, monthly aggregation, events to a downstream AI/notification
   service). Don't reference Kafka topics/schedulers as if they exist — check before building on them.

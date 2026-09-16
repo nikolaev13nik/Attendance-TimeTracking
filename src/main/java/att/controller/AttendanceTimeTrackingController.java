@@ -15,6 +15,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 
 import att.api.TimeTrackingApi;
+import att.context.AsyncMessageHandler;
 import att.context.DataTimeContext;
 import att.dto.DataTimeDto;
 import att.dto.EditDataTimeUserDto;
@@ -49,6 +50,7 @@ public class AttendanceTimeTrackingController implements TimeTrackingApi {
     private final CheckNullRowsService checkNullRowsService;
     private final StatisticInfoService statisticInfoService;
     private final AddLeaveDaysService addLeaveDaysService;
+    private final AsyncMessageHandler statisticAsyncMessageHandler;
 
     @PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name()) || #idUser.toString() == authentication.name")
     public ResponseEntity<DataTimeDto> openSession(@PathVariable Integer tenantId, @PathVariable Integer idUser,
@@ -157,9 +159,11 @@ public class AttendanceTimeTrackingController implements TimeTrackingApi {
                                                                                    Boolean report) {
         DataTimeContext<Void> context = DataTimeContext.<Void>builder()
                 .idUser(idUser).tenantId(tenantId).build();
+        context.setAsyncMessageHandler(statisticAsyncMessageHandler);
         context.getStatisticInfoHolder().setReport(report);
         context.getStatisticInfoHolder().setStartOfMonth(targetMonth.atDay(1).atStartOfDay().atOffset(ZoneOffset.UTC));
         statisticInfoService.execute(context);
+        context.getPostServiceAction().accept(context);
         return ResponseEntity.ok(context.getStatisticInfoHolder().getMultipleUserData().values().stream().toList());
     }
 

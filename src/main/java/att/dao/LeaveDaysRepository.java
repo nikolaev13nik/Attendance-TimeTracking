@@ -16,7 +16,6 @@ public interface LeaveDaysRepository extends JpaRepository<LeaveDay, LeaveDayKey
 
     List<LeaveDay> findByLeaveDayKeyTenantIdAndLeaveDayKeyIdUser(Integer tenantId, Integer idUser);
 
-    //todo: why we need native query if cammel case expression is good enouth
     @Query("SELECT DISTINCT l.leaveDayKey.idUser FROM LeaveDay l WHERE l.leaveDayKey.tenantId = :tenantId")
     List<Integer> findDistinctUserIdsByTenantId(@Param("tenantId") Integer tenantId);
 

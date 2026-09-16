@@ -59,15 +59,11 @@ public class StatisticInfoService extends BaseGetService<Void> {
     protected void executeBusiness(DataTimeContext<Void> context) {
         YearMonth targetMonth = YearMonth.from(context.getStartDate());
         for (Integer userId : context.getStatisticInfoHolder().getTargetUserIds()) {
-            // reuse the single shared context across every per-user delegate call (instead of one
-            // throwaway context per user per metric) - each delegate writes its result keyed by
-            // userId into the context's per-user maps, so nothing gets overwritten between iterations
             context.setIdUser(userId);
             countWorkedDaysService.fetch(context);
             getWorkedMinutesBetweenService.fetch(context);
             getOvertimeMinutesBetweenService.fetch(context);
             populateLeaveDayTotals(context, userId);
-
             composeUserMonthStatistic(context, userId, targetMonth);
         }
     }

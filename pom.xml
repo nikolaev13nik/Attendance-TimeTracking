@@ -23,9 +23,29 @@
 		<openapi-generator.version>7.23.0</openapi-generator.version>
 		<swagger-annotations.version>2.2.43</swagger-annotations.version>
         <wiremock.version>3.9.2</wiremock.version>
+		<spring-cloud.version>2025.1.2</spring-cloud.version>
 	</properties>
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.springframework.cloud</groupId>
+				<artifactId>spring-cloud-dependencies</artifactId>
+				<version>${spring-cloud.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
 
 	<dependencies>
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-stream</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-stream-binder-kafka</artifactId>
+		</dependency>
 		<dependency>
 			<groupId>com.google.guava</groupId>
 			<artifactId>guava</artifactId>
@@ -128,6 +148,11 @@
             <artifactId>wiremock-standalone</artifactId>
             <version>${wiremock.version}</version>
             <scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.kafka</groupId>
+			<artifactId>spring-kafka-test</artifactId>
+			<scope>test</scope>
 		</dependency>
 	</dependencies>
 
@@ -242,6 +267,46 @@
                                 <useJackson3>true</useJackson3>
                                 <openApiNullable>false</openApiNullable>
                                 <documentationProvider>none</documentationProvider>
+							</configOptions>
+						</configuration>
+					</execution>
+					<execution>
+						<id>generate-statistic-events</id>
+						<goals>
+							<goal>generate</goal>
+						</goals>
+						<configuration>
+							<inputSpec>
+								${project.basedir}/src/main/resources/swagger-source/attendance-statistic-events.yaml
+							</inputSpec>
+							<typeMappings>
+								<typeMapping>DateTime=OffsetDateTime</typeMapping>
+								<typeMapping>year-month=YearMonth</typeMapping>
+							</typeMappings>
+							<importMappings>
+								<importMapping>OffsetDateTime=java.time.OffsetDateTime</importMapping>
+								<importMapping>YearMonth=java.time.YearMonth</importMapping>
+							</importMappings>
+							<generatorName>spring</generatorName>
+							<modelPackage>att.messaging.dto</modelPackage>
+							<generateSupportingFiles>false</generateSupportingFiles>
+							<generateApiTests>false</generateApiTests>
+							<generateApiDocumentation>false</generateApiDocumentation>
+							<generateModelTests>false</generateModelTests>
+							<generateModelDocumentation>false</generateModelDocumentation>
+							<configOptions>
+								<interfaceOnly>true</interfaceOnly>
+								<useTags>true</useTags>
+								<dateLibrary>java8-localdatetime</dateLibrary>
+								<serializableModel>true</serializableModel>
+								<useSpringBoot4>true</useSpringBoot4>
+								<useJackson3>true</useJackson3>
+								<skipDefaultInterface>true</skipDefaultInterface>
+								<useResponseEntity>true</useResponseEntity>
+								<generateBuilders>true</generateBuilders>
+								<openApiNullable>false</openApiNullable>
+								<documentationProvider>none</documentationProvider>
+								<annotationLibrary>swagger2</annotationLibrary>
                             </configOptions>
                         </configuration>
                     </execution>
@@ -268,6 +333,8 @@
                                 <exclude>att/client/accounting/api/**</exclude>
                                 <exclude>att/client/accounting/dto/**</exclude>
                                 <exclude>att/client/accounting/support/**</exclude>
+								<!-- OpenAPI-generated Kafka message payloads -->
+								<exclude>att/messaging/dto/**</exclude>
 								<!-- MapStruct-generated mapper implementations (target/generated-sources/annotations) -->
 								<exclude>att/mapper/*Impl.class</exclude>
 								<!-- Boot entrypoint: just SpringApplication.run, no branching logic -->

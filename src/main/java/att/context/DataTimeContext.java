@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 import att.dto.DataTimeDto;
 import att.dto.EditDataTimeUserDto;
@@ -22,7 +23,7 @@ import lombok.Setter;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class DataTimeContext<T> {
+public class DataTimeContext<T> implements BusinessStrategyContext {
 
     // input
     private T task;
@@ -59,12 +60,18 @@ public class DataTimeContext<T> {
     @Builder.Default
     private StatisticInfoHolder statisticInfoHolder = new StatisticInfoHolder();
 
+    private AsyncMessageHandler asyncMessageHandler;
 
     public DataTimeDto getSingleResponseDataTimeDto() {
         return this.responseDataTimeDto.get(0);
     }
 
+    @Override
+    public <S extends BusinessStrategyContext> Consumer<S> getPostServiceAction() {
+        return ctx -> doPostServiceAction((DataTimeContext<?>) ctx);
+    }
 
-
-
+    private void doPostServiceAction(DataTimeContext<?> context) {
+        context.asyncMessageHandler.prepareAndSendAsyncStatMsg(context);
+    }
 }
