@@ -70,10 +70,10 @@ definitions:
 
   MonthStatisticEvent:
     description: Published when a user's monthly statistics have been computed; triggers enrichment
-      and forwarding to the AI Assistance & Notification service
+      and forwarding to the AI Assistance & Notification service. Carries only the identity and target
+      month - the consumer looks up the statistic figures (including the target month's) from the DB.
     allOf:
       - $ref: '#/definitions/TenantUserContext'
-      - $ref: '#/definitions/StatisticSnapshot'
       - type: object
         required:
           - yearMonth

@@ -61,11 +61,6 @@ class StatisticEventPublishingTest extends BaseApiControllerTest {
         assertEquals(2, event.getTenantId());
         assertEquals(USER_ID, event.getUserId());
         assertEquals(YearMonth.parse("2024-01"), event.getYearMonth());
-        assertEquals(3, event.getWorkDays());
-        assertEquals(25.0, event.getTotalWorkHours());
-        assertEquals(1.0, event.getOvertimeHours());
-        assertEquals(1.0, event.getVacationDays());
-        assertEquals(1.5, event.getSickDays());
 
         verify(statisticEventProducer, never()).sendUserStatisticAnalysisRequest(any(), any());
     }
@@ -93,21 +88,11 @@ class StatisticEventPublishingTest extends BaseApiControllerTest {
                 .filter(e -> USER_ID.equals(e.getUserId())).findFirst().orElseThrow();
         assertEquals(2, user2Event.getTenantId());
         assertEquals(YearMonth.parse("2024-01"), user2Event.getYearMonth());
-        assertEquals(3, user2Event.getWorkDays());
-        assertEquals(25.0, user2Event.getTotalWorkHours());
-        assertEquals(1.0, user2Event.getOvertimeHours());
-        assertEquals(0.0, user2Event.getVacationDays());
-        assertEquals(0.0, user2Event.getSickDays());
 
         MonthStatisticEvent user3Event = captor.getAllValues().stream()
                 .filter(e -> OTHER_USER_ID.equals(e.getUserId())).findFirst().orElseThrow();
         assertEquals(2, user3Event.getTenantId());
         assertEquals(YearMonth.parse("2024-01"), user3Event.getYearMonth());
-        assertEquals(0, user3Event.getWorkDays());
-        assertEquals(0.0, user3Event.getTotalWorkHours());
-        assertEquals(0.0, user3Event.getOvertimeHours());
-        assertEquals(1.0, user3Event.getVacationDays());
-        assertEquals(0.0, user3Event.getSickDays());
 
         verify(statisticEventProducer, never()).sendUserStatisticAnalysisRequest(any(), any());
     }
