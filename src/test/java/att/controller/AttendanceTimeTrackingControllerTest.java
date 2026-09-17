@@ -30,6 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
 
@@ -465,6 +466,29 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
 
     @Test
     @FlywayTest
+    @DisplayName("POST month statistic as admin - report=false computes the statistic without publishing anything")
+    void getMonthStatisticReportFalse_publishesNothingTest() {
+        // close the blocking session so the month has no incomplete sessions
+        ResponseEntity<String> editResponse = sendRequestWithAdmin(HttpMethod.POST, EDIT_URL,
+                null, 2, createEditDataTimeUserDto(SEEDED_OPEN_ID, null,
+                        OffsetDateTime.parse("2024-01-04T17:30:00Z")));
+        assertEquals(HttpStatus.OK, editResponse.getStatusCode());
+
+        ResponseEntity<String> response = sendRequestWithAdmin(HttpMethod.POST,
+                withReport(statistic(STATISTIC_URL, "2024-01", USER_ID), false), null, 2, null);
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+
+        MonthlyUserStatisticInfoDto stat = readList(response, MonthlyUserStatisticInfoDto.class).get(0);
+        assertEquals(USER_ID, stat.getUserId());
+        assertEquals(3, stat.getWorkDays());
+        assertEquals(25.0, stat.getTotalWorkHours());
+        verifyMonthStatisticDbState(stat, 2);
+
+        verifyNoInteractions(statisticEventProducer);
+    }
+
+    @Test
+    @FlywayTest
     @DisplayName("POST month statistic as admin - incomplete session rejects the request")
     void getMonthStatisticIncompleteSessionTest() {
         long countBefore = monthStatisticRepository.count();
@@ -483,6 +507,8 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
     @FlywayTest
     @DisplayName("POST month statistic as admin - idUser omitted covers every user seeded under the tenant")
     void getMonthStatisticAllUsersTest() {
+        long countBefore = monthStatisticRepository.count();
+
         // close the blocking session so user 2's month has no incomplete sessions
         ResponseEntity<String> editResponse = sendRequestWithAdmin(HttpMethod.POST, EDIT_URL,
                 null, 2, createEditDataTimeUserDto(SEEDED_OPEN_ID, null,
@@ -529,7 +555,9 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
         // db state validations
         verifyMonthStatisticDbState(user2Stat, 2);
         verifyMonthStatisticDbState(user3Stat, 2);
-        assertEquals(2, monthStatisticRepository.count());
+        assertEquals(countBefore + 2, monthStatisticRepository.count(),
+                "Reason: exactly one row per covered user should be added by this flow");
+        verifyNoInteractions(statisticEventProducer);
     }
 
     @Test
@@ -552,6 +580,8 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
     @FlywayTest
     @DisplayName("POST month statistic as admin - recomputing after a new session updates the persisted row without a duplicate-key failure")
     void getMonthStatisticRecomputeAfterNewSessionTest() {
+        long countBefore = monthStatisticRepository.count();
+
         // close the blocking session so the month has no incomplete sessions
         ResponseEntity<String> editResponse = sendRequestWithAdmin(HttpMethod.POST, EDIT_URL,
                 null, 2, createEditDataTimeUserDto(SEEDED_OPEN_ID, null,
@@ -566,7 +596,8 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
         assertEquals(3, firstStat.getWorkDays());
         assertEquals(25.0, firstStat.getTotalWorkHours());
         verifyMonthStatisticDbState(firstStat, 2);
-        assertEquals(1, monthStatisticRepository.count());
+        assertEquals(countBefore + 1, monthStatisticRepository.count(),
+                "Reason: the first call should add exactly one row");
 
         // add a brand-new attendance record for the same tenant/user/month directly via the repository:
         // openSession/closeSession only allow workDate == "today" (see OpenSessionService/CloseSessionService
@@ -594,7 +625,7 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
 
         // still exactly one row for this key - upsert, not a duplicate insert
         verifyMonthStatisticDbState(secondStat, 2);
-        assertEquals(1, monthStatisticRepository.count(),
+        assertEquals(countBefore + 1, monthStatisticRepository.count(),
                 "Reason: recomputation must update the existing row in place, not add a second one");
     }
 }

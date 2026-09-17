@@ -1,5 +1,6 @@
 package att.messaging.consumer;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.Message;
@@ -21,6 +22,7 @@ import lombok.RequiredArgsConstructor;
 
 @Configuration
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "att.messaging.enrichment.enabled", havingValue = "true", matchIfMissing = true)
 public class StatisticEnrichmentConsumer {
 
     private final MonthStatisticRepository monthStatisticRepository;

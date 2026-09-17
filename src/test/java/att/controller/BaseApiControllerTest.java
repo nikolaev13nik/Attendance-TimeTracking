@@ -11,6 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.test.context.TestExecutionListeners;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.client.DefaultResponseErrorHandler;
 import org.springframework.web.client.RestTemplate;
 
@@ -29,6 +30,7 @@ import att.dto.LeaveDayEntryDto;
 import att.dto.LeaveReportRequestDto;
 import att.dto.MonthlyUserStatisticInfoDto;
 import att.dto.SessionDataDto;
+import att.messaging.producer.StatisticEventProducer;
 import att.model.DataTime;
 import att.model.MonthStatistic;
 import att.model.MonthStatisticKey;
@@ -72,6 +74,8 @@ public abstract class BaseApiControllerTest {
     protected static final String ADD_LEAVE_DAYS_URL = BASE_SUFFIX_URL + "/addLeaveDays/tenant/%s/userId/%s";
     protected static final String STATISTIC_URL = BASE_SUFFIX_URL + "/statistic" + TENANT_ID_URL;
 
+    protected static final Integer SEEDED_STAT_USER_ID = 7;
+
     @Autowired
     protected SessionAttendanceTimeRepository sessionAttendanceTimeRepository;
 
@@ -88,6 +92,15 @@ public abstract class BaseApiControllerTest {
     protected static final int SEEDED_TODAY_OPEN_ID = 1005;
     protected static final int SEEDED_FINISHED_ID = 1002;
     protected static final int SEEDED_OPEN_ID = 1003;
+    protected static final Integer SEEDED_STAT_OTHER_USER_ID = 8;
+    protected static final int SEEDED_STAT_OTHER_TENANT_ID = 3;
+    protected static final String SEEDED_STAT_TARGET_MONTH = "2024-01";
+    protected static final String SEEDED_STAT_PREVIOUS_MONTH = "2023-12";
+    protected static final String SEEDED_STAT_OLDEST_EXCLUDED_MONTH = "2023-06";
+    protected static final String SEEDED_STAT_FUTURE_MONTH = "2024-02";
+    @MockitoBean
+    protected StatisticEventProducer statisticEventProducer;
+
 
     private final RestTemplate rest = createRestTemplate();
 
@@ -95,6 +108,7 @@ public abstract class BaseApiControllerTest {
     protected String jwtTokenUser = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjMiLCJleHAiOjIxMDEwMzI3MDIsImlhdCI6MTc4NTY3MjcwMiwiYXV0aG9yaXRpZXMiOlsiVVNFUiIsIkZBQ1RPUl9QQVNTV09SRCJdfQ.x_Jobfo63CL4eUxU6lBO11SyMG7ZdQeO5Z3S5wyjbLY";
     protected String jwtTokenUserTenant_123 = "eyJhbGciOiJIUzI1NiJ9" +
             ".eyJ0ZW5hbnRJZCI6MTIzLCJzdWIiOiIxMjMiLCJleHAiOjIxMDE3MDkzNDAsImlhdCI6MTc4NjM0OTM0MCwiYXV0aG9yaXRpZXMiOlsiVVNFUiIsIkZBQ1RPUl9QQVNTV09SRCJdfQ.zSHpMa_RqUSFByzlk5MxchZuInlxZihHJbPfD9gNodw";
+
     private static RestTemplate createRestTemplate() {
             RestTemplate rt = new RestTemplate();
             rt.setErrorHandler(new DefaultResponseErrorHandler() {
@@ -274,6 +288,10 @@ public abstract class BaseApiControllerTest {
 
     protected String statistic(String base, String targetMonth, int idUser) {
         return statistic(base, targetMonth) + "&idUser=" + idUser;
+    }
+
+    protected String withReport(String statisticUrl, boolean report) {
+        return statisticUrl + "&report=" + report;
     }
 
     protected SessionDataDto generateSessionDataDto(LocalDate workDate, OffsetDateTime openDate,
