@@ -23,7 +23,7 @@ over Kafka (topic `att.user-statistic-ai-analysis`) and is not part of this repo
 ./mvnw spring-boot:run            # run locally (H2 file DB at ./data/att, see application.properties)
 ```
 
-Requires env var `ATT_JWT_SECRET` (HMAC secret for the JWT resource server) — tests supply their own via
+Requires env var `ATTENDANCE_ACCOUNTING_JWT_SECRET` (HMAC secret for the JWT resource server) — tests supply their own via
 `src/test/resources/application.properties`. Optional: `KAFKA_BOOTSTRAP_SERVERS` (default
 `localhost:9092`) and `ATTENDANCE_ACCOUNTING_BASE_URL` (default `http://localhost:8081`).
 
