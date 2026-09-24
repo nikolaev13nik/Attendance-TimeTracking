@@ -1,0 +1,138 @@
+# TimeTracking: validates Accounting's JWTs, calls Accounting over HTTP, talks to Kafka.
+# Same shape as accounting.yaml. The differences are marked "<-- DIFFERS".
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: timetracking
+  namespace: attendance              # the namespace the PLATFORM repo creates
+spec:
+  replicas: 1
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0              # zero-downtime: new pod must pass readiness first
+
+  selector:
+    matchLabels:
+      app: timetracking
+  template:
+    metadata:
+      labels:
+        app: timetracking
+    spec:
+      containers:
+        - name: timetracking
+          image: timetracking:local
+          imagePullPolicy: Never     # local image; k3s shares dockerd with `docker build`
+
+          ports:
+            - containerPort: 8080
+
+          env:
+            - name: JAVA_TOOL_OPTIONS
+              value: "-XX:MaxRAMPercentage=75"    # heap = 75% of the memory LIMIT below
+
+            # --- from the ConfigMap ------------------------------------------
+            - name: POSTGRES_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: attendance-config
+                  key: POSTGRES_HOST
+            - name: POSTGRES_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: attendance-config
+                  key: POSTGRES_PORT
+            - name: SPRING_DATASOURCE_DRIVER_CLASS_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: attendance-config
+                  key: SPRING_DATASOURCE_DRIVER_CLASS_NAME
+            - name: SPRING_JPA_DATABASE_PLATFORM
+              valueFrom:
+                configMapKeyRef:
+                  name: attendance-config
+                  key: SPRING_JPA_DATABASE_PLATFORM
+
+            # <-- DIFFERS: the service-to-service call. Resolves to the "accounting"
+            # Service in this namespace - the same name your Mac now sees via kubefwd.
+            - name: ATTENDANCE_ACCOUNTING_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: attendance-config
+                  key: ATTENDANCE_ACCOUNTING_BASE_URL
+
+            # <-- DIFFERS: only this service uses Kafka
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: attendance-config
+                  key: KAFKA_BOOTSTRAP_SERVERS
+
+            # <-- DIFFERS: same database, different SCHEMA
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:postgresql://$(POSTGRES_HOST):$(POSTGRES_PORT)/attendance?currentSchema=timetracking"
+
+            # <-- DIFFERS: its own restricted user; cannot read the accounting schema
+            - name: SPRING_DATASOURCE_USERNAME
+              value: timetracking_user
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: attendance-secrets
+                  key: TIMETRACKING_DB_PASSWORD
+
+            # NOT different, and that is the whole point: the SAME Secret key,
+            # into the SAME env var name that accounting.yaml uses. One value in
+            # two pods is what makes a token minted by Accounting valid here.
+            - name: ATTENDANCE_ACCOUNTING_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: attendance-secrets
+                  key: JWT_SECRET
+
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "200m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+
+          startupProbe: # Spring Boot + Kafka binder: slower than accounting
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            periodSeconds: 5
+            failureThreshold: 48       # 48 x 5s = up to 240s to finish booting
+
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            periodSeconds: 10
+            failureThreshold: 3
+
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            periodSeconds: 30
+            failureThreshold: 3
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: timetracking
+  namespace: attendance
+spec:
+  type: ClusterIP
+  selector:
+    app: timetracking
+  ports:
+    - port: 8080
+      targetPort: 8080
