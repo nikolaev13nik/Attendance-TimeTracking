@@ -23,10 +23,10 @@ public class AccountingClientConfiguration {
     @Value("${att.integration.attendance-accounting.base-url}")
     private String baseUrl;
 
-    @Value("${att.integration.attendance-accounting.connect-timeout-ms}")
+    @Value("${att.integration.attendance-accounting.connect-timeout-ms:2000}")
     private long connectTimeoutMs;
 
-    @Value("${att.integration.attendance-accounting.read-timeout-ms}")
+    @Value("${att.integration.attendance-accounting.read-timeout-ms:5000}")
     private long readTimeoutMs;
 
     @Bean
