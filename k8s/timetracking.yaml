@@ -26,7 +26,7 @@ spec:
       containers:
         - name: timetracking
 
-          image: ghcr.io/nikolaev13nik/attendance-timetracking:1.0.8
+          image: ghcr.io/nikolaev13nik/attendance-timetracking:1.0.11
 
           imagePullPolicy: IfNotPresent
 
