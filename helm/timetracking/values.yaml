@@ -1,0 +1,83 @@
+# DEFAULT values for the timetracking chart.
+#
+# Deliberately the same SHAPE as Attendance-Accounting/helm/accounting/values.yaml,
+# so the two can be read side by side and the differences stand out. Everything
+# marked DIFFERS below is a real difference between the services, not an accident.
+#
+# Precedence, lowest to highest:
+#   this file  <  -f values-<env>.yaml  <  --set key=value
+
+namespace: attendance          # created by the platform, never by this chart
+
+replicaCount: 1
+
+image:
+  repository: ghcr.io/nikolaev13nik/attendance-timetracking
+
+  # Empty -> falls back to Chart.yaml's appVersion. Two ways to pick a version:
+  #   bump appVersion       -> committed and reviewable
+  #   --set image.tag=1.0.12 -> deploy-time, wins, and is what CD passes
+  # The second is what stops the deploy itself from triggering another build.
+  tag: ""
+
+  pullPolicy: IfNotPresent     # tags are immutable in practice - CI mints a new one per build
+
+service:
+  port: 8080
+  targetPort: 8080
+
+# Names owned by the PLATFORM chart. Consumed here, never created here.
+config:
+  name: attendance-config
+secret:
+  name: attendance-secrets
+
+database:
+  name: attendance                        # SAME database as accounting...
+  schema: timetracking                    # DIFFERS: ...but its own schema
+  username: timetracking_user             # DIFFERS: cannot read the accounting schema
+  passwordKey: TIMETRACKING_DB_PASSWORD   # DIFFERS: its own credential
+
+# NOT different, and that is the entire point. The same Secret key, read into the
+# same env var name as accounting uses. One shared value in two pods is what makes
+# a token minted by Accounting valid here.
+jwtSecretKey: JWT_SECRET
+
+# DIFFERS: keys this service reads from the platform ConfigMap that accounting
+# does not. Only this service calls Accounting, and only this service uses Kafka.
+accountingBaseUrlKey: ATTENDANCE_ACCOUNTING_BASE_URL
+kafkaBootstrapServersKey: KAFKA_BOOTSTRAP_SERVERS
+
+# Outbound HTTP timeouts for the call to Accounting. EMPTY means the variable is
+# not set at all, so the application's @Value defaults (2000 / 5000) apply and the
+# image stays the single source of truth. Set a value only to deviate deliberately.
+connectTimeoutMs: ""
+readTimeoutMs: ""
+
+javaToolOptions: "-XX:MaxRAMPercentage=75"
+
+resources:
+  requests:
+    memory: 512Mi
+    cpu: 200m
+  limits:
+    memory: 1Gi
+    cpu: 1000m
+
+strategy:
+  maxSurge: 1
+  maxUnavailable: 0            # zero-downtime: new pod passes readiness before the old one goes
+
+probes:
+  path: /actuator/health
+  startup:
+    periodSeconds: 5
+    # DIFFERS: 48 x 5s = 240s, vs accounting's 180s. This service boots the Kafka
+    # binder as well as Spring, so it is genuinely slower to become ready.
+    failureThreshold: 48
+  readiness:
+    periodSeconds: 10
+    failureThreshold: 3
+  liveness:
+    periodSeconds: 30
+    failureThreshold: 3

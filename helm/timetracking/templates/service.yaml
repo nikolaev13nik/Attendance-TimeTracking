@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  # NOT parameterised: this name is a CONTRACT. The platform Ingress routes
+  # /attendance to it by this exact name. Renaming it here breaks routing from
+  # another repo, with no error at install time.
+  name: timetracking
+  namespace: {{ .Values.namespace }}
+spec:
+  type: ClusterIP
+  selector:
+    app: timetracking              # matches the pod label in deployment.yaml
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort }}

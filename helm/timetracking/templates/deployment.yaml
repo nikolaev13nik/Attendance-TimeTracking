@@ -1,0 +1,128 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: timetracking
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: {{ .Values.strategy.maxSurge }}
+      maxUnavailable: {{ .Values.strategy.maxUnavailable }}
+
+  selector:
+    matchLabels:
+      app: timetracking
+  template:
+    metadata:
+      labels:
+        app: timetracking
+    spec:
+      containers:
+        - name: timetracking
+
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+
+          ports:
+            - containerPort: {{ .Values.service.targetPort }}
+
+          env:
+            - name: JAVA_TOOL_OPTIONS
+              value: {{ .Values.javaToolOptions | quote }}
+
+            - name: POSTGRES_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.config.name }}
+                  key: POSTGRES_HOST
+            - name: POSTGRES_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.config.name }}
+                  key: POSTGRES_PORT
+            - name: SPRING_DATASOURCE_DRIVER_CLASS_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.config.name }}
+                  key: SPRING_DATASOURCE_DRIVER_CLASS_NAME
+            - name: SPRING_JPA_DATABASE_PLATFORM
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.config.name }}
+                  key: SPRING_JPA_DATABASE_PLATFORM
+
+            {{- /* DIFFERS: the service-to-service call. Resolves to the `accounting`
+                   Service created by the OTHER repo's chart - a Service name, and the
+                   CONTAINER port 8080, never localhost and never a host port. */}}
+            - name: ATTENDANCE_ACCOUNTING_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.config.name }}
+                  key: {{ .Values.accountingBaseUrlKey }}
+
+            {{- /* DIFFERS: only this service talks to Kafka. */}}
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.config.name }}
+                  key: {{ .Values.kafkaBootstrapServersKey }}
+
+            {{- /* $(VAR) is expanded by KUBERNETES and only sees variables defined
+                   EARLIER in this list, so the two POSTGRES_* entries must stay above.
+                   DIFFERS from accounting only in the schema. */}}
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:postgresql://$(POSTGRES_HOST):$(POSTGRES_PORT)/{{ .Values.database.name }}?currentSchema={{ .Values.database.schema }}"
+
+            - name: SPRING_DATASOURCE_USERNAME
+              value: {{ .Values.database.username | quote }}
+
+            {{- /* One key at a time, not `envFrom: secretRef` - otherwise this pod
+                   would also receive accounting's database password. */}}
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secret.name }}
+                  key: {{ .Values.database.passwordKey }}
+
+            - name: ATTENDANCE_ACCOUNTING_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secret.name }}
+                  key: {{ .Values.jwtSecretKey }}
+
+            {{- /* Emitted only when set, so the image keeps owning the defaults. */}}
+            {{- with .Values.connectTimeoutMs }}
+            - name: ATT_INTEGRATION_ATTENDANCE_ACCOUNTING_CONNECT_TIMEOUT_MS
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.readTimeoutMs }}
+            - name: ATT_INTEGRATION_ATTENDANCE_ACCOUNTING_READ_TIMEOUT_MS
+              value: {{ . | quote }}
+            {{- end }}
+
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+
+          startupProbe:
+            httpGet:
+              path: {{ .Values.probes.path }}
+              port: {{ .Values.service.targetPort }}
+            periodSeconds: {{ .Values.probes.startup.periodSeconds }}
+            failureThreshold: {{ .Values.probes.startup.failureThreshold }}
+
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.probes.path }}
+              port: {{ .Values.service.targetPort }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+            failureThreshold: {{ .Values.probes.readiness.failureThreshold }}
+
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.probes.path }}
+              port: {{ .Values.service.targetPort }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+            failureThreshold: {{ .Values.probes.liveness.failureThreshold }}
