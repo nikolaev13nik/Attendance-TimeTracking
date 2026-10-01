@@ -86,11 +86,17 @@ spec:
 
             {{- with .Values.connectTimeoutMs }}
             - name: ATT_INTEGRATION_ATTENDANCE_ACCOUNTING_CONNECT_TIMEOUT_MS
-              value: {{ . | quote }}
+              valueFrom:
+                configMapKeyRef:
+                  name: timetracking-config
+                  key: ATT_INTEGRATION_ATTENDANCE_ACCOUNTING_CONNECT_TIMEOUT_MS
             {{- end }}
             {{- with .Values.readTimeoutMs }}
             - name: ATT_INTEGRATION_ATTENDANCE_ACCOUNTING_READ_TIMEOUT_MS
-              value: {{ . | quote }}
+              valueFrom:
+                configMapKeyRef:
+                  name: timetracking-config
+                  key: ATT_INTEGRATION_ATTENDANCE_ACCOUNTING_READ_TIMEOUT_MS
             {{- end }}
 
           resources:

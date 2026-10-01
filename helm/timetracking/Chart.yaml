@@ -3,6 +3,6 @@ name: timetracking
 description: Time-tracking service. Validates Accounting's JWTs, calls Accounting over HTTP, publishes to Kafka.
 type: application
 
-version: 0.1.0
+version: 0.2.0
 
 appVersion: "1.0.12"

@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: timetracking-config
+  namespace: {{ .Values.namespace }}
+data:
+  {{- with .Values.connectTimeoutMs }}
+  ATT_INTEGRATION_ATTENDANCE_ACCOUNTING_CONNECT_TIMEOUT_MS: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.readTimeoutMs }}
+  ATT_INTEGRATION_ATTENDANCE_ACCOUNTING_READ_TIMEOUT_MS: {{ . | quote }}
+  {{- end }}

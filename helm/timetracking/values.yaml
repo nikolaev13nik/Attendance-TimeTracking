@@ -29,8 +29,8 @@ jwtSecretKey: JWT_SECRET
 accountingBaseUrlKey: ATTENDANCE_ACCOUNTING_BASE_URL
 kafkaBootstrapServersKey: KAFKA_BOOTSTRAP_SERVERS
 
-connectTimeoutMs: ""
-readTimeoutMs: ""
+connectTimeoutMs: "2000"
+readTimeoutMs: "5000"
 
 javaToolOptions: "-XX:MaxRAMPercentage=75"
 
