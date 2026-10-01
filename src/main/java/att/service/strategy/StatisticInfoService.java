@@ -10,13 +10,16 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
+import att.client.accounting.api.AccountApi;
 import att.context.DataTimeContext;
+import att.context.StatisticInfoHolder;
 import att.dto.MonthlyUserStatisticInfoDto;
 import att.exceptions.BadRequestException;
 import att.mapper.MonthStatisticMapper;
 import att.model.LeaveDay;
 import att.model.LeaveType;
 import att.model.MonthStatistic;
+import att.security.JwtClaimsResolver;
 
 import static att.exceptions.ErrorConstants.INCOMPLETE_SESSIONS_MSG;
 import static org.hibernate.internal.util.collections.CollectionHelper.isNotEmpty;
@@ -34,6 +37,8 @@ public class StatisticInfoService extends BaseGetService<Void> {
     private CountWorkedDaysService countWorkedDaysService;
     @Autowired
     private MonthStatisticMapper monthStatisticMapper;
+    @Autowired
+    private AccountApi accountApi;
 
     @Override
     protected void fetch(DataTimeContext<Void> context) {
@@ -64,6 +69,7 @@ public class StatisticInfoService extends BaseGetService<Void> {
             getWorkedMinutesBetweenService.fetch(context);
             getOvertimeMinutesBetweenService.fetch(context);
             populateLeaveDayTotals(context, userId);
+            resolveReportRequester(context);
             composeUserMonthStatistic(context, userId, targetMonth);
         }
     }
@@ -97,6 +103,20 @@ public class StatisticInfoService extends BaseGetService<Void> {
         Set<Integer> userIds = new TreeSet<>(timeRepository.findDistinctUserIdsByTenantId(context.getTenantId()));
         userIds.addAll(leaveDaysRepository.findDistinctUserIdsByTenantId(context.getTenantId()));
         return userIds;
+    }
+
+    /**
+     * Resolves the caller the report was requested by (the JWT {@code sub}) against Attendance-Accounting, so the
+     * events published afterwards carry a name and an email to notify. Only the report flow needs it, and the caller
+     * is the same for every target user, so Accounting is called at most once per request. A failure propagates: the
+     * pipeline is transactional, so nothing is persisted and nothing is published.
+     */
+    private void resolveReportRequester(DataTimeContext<Void> context) {
+        StatisticInfoHolder holder = context.getStatisticInfoHolder();
+        if (!Boolean.TRUE.equals(holder.getReport()) || holder.getReportRequester() != null) {
+            return;
+        }
+        holder.setReportRequester(accountApi.getUser(context.getTenantId(), JwtClaimsResolver.currentUserId()));
     }
 
     private void populateLeaveDayTotals(DataTimeContext<Void> context, Integer userId) {

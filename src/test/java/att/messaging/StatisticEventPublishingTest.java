@@ -14,6 +14,7 @@ import java.time.YearMonth;
 import java.util.List;
 
 import att.controller.BaseApiControllerTest;
+import att.exceptions.InternalApiException;
 import att.messaging.dto.MonthStatisticEvent;
 
 import static att.exceptions.ErrorConstants.INCOMPLETE_SESSIONS_MSG;
@@ -25,6 +26,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 @DisplayName("Statistic API with report=true publishes the expected month-statistic event")
 class StatisticEventPublishingTest extends BaseApiControllerTest {
@@ -41,6 +43,7 @@ class StatisticEventPublishingTest extends BaseApiControllerTest {
     @DisplayName("report=true publishes one trigger event carrying the computed statistic of the reported user")
     void reportTrue_singleUser_publishesExpectedEventTest() {
         closeBlockingSession();
+        stubReportRequester(2);
         // leave days make vacationDays/sickDays non-zero, so the payload assertions below cover
         // every field instead of passing trivially on defaults
         ResponseEntity<String> leaveResponse = sendRequestWithAdmin(HttpMethod.POST, ADD_LEAVE_DAYS_URL, USER_ID, 2,
@@ -61,7 +64,9 @@ class StatisticEventPublishingTest extends BaseApiControllerTest {
         assertEquals(2, event.getTenantId());
         assertEquals(USER_ID, event.getUserId());
         assertEquals(YearMonth.parse("2024-01"), event.getYearMonth());
+        assertReportRequester(event.getReportUserName(), event.getReportUserLastName(), event.getReportEmail());
 
+        verify(accountApi).getUser(2, ADMIN_SUB_ID);
         verify(statisticEventProducer, never()).sendUserStatisticAnalysisRequest(any(), any());
     }
 
@@ -70,6 +75,7 @@ class StatisticEventPublishingTest extends BaseApiControllerTest {
     @DisplayName("report=true with idUser omitted publishes one trigger event per tenant user")
     void reportTrue_allUsers_publishesOnePerUserTest() {
         closeBlockingSession();
+        stubReportRequester(2);
         // OTHER_USER_ID has no seeded work sessions under tenant 2, so it only shows up in
         // resolveTargetUserIds() once it has a leave day - mirrors getMonthStatisticAllUsersTest
         ResponseEntity<String> leaveUser3 = sendRequestWithAdmin(HttpMethod.POST, ADD_LEAVE_DAYS_URL, OTHER_USER_ID, 2,
@@ -88,12 +94,18 @@ class StatisticEventPublishingTest extends BaseApiControllerTest {
                 .filter(e -> USER_ID.equals(e.getUserId())).findFirst().orElseThrow();
         assertEquals(2, user2Event.getTenantId());
         assertEquals(YearMonth.parse("2024-01"), user2Event.getYearMonth());
+        assertReportRequester(user2Event.getReportUserName(), user2Event.getReportUserLastName(),
+                user2Event.getReportEmail());
 
         MonthStatisticEvent user3Event = captor.getAllValues().stream()
                 .filter(e -> OTHER_USER_ID.equals(e.getUserId())).findFirst().orElseThrow();
         assertEquals(2, user3Event.getTenantId());
         assertEquals(YearMonth.parse("2024-01"), user3Event.getYearMonth());
+        assertReportRequester(user3Event.getReportUserName(), user3Event.getReportUserLastName(),
+                user3Event.getReportEmail());
 
+        // the requester is the caller, not the reported user, so one lookup covers every event of the request
+        verify(accountApi, times(1)).getUser(2, ADMIN_SUB_ID);
         verify(statisticEventProducer, never()).sendUserStatisticAnalysisRequest(any(), any());
     }
 
@@ -112,6 +124,25 @@ class StatisticEventPublishingTest extends BaseApiControllerTest {
 
         assertEquals(countBefore, monthStatisticRepository.count(),
                 "Reason: no statistic row should be persisted for a rejected request");
+        verifyNoInteractions(statisticEventProducer);
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("report=true but the requester lookup against Accounting fails - the whole request fails")
+    void reportTrue_requesterLookupFails_failsRequestAndPublishesNothingTest() {
+        closeBlockingSession();
+        long countBefore = monthStatisticRepository.count();
+        when(accountApi.getUser(2, ADMIN_SUB_ID))
+                .thenThrow(new InternalApiException("attendance-accounting call failed: 400 Bad Request", null));
+
+        ResponseEntity<String> response = sendRequestWithAdmin(HttpMethod.POST,
+                withReport(statistic(STATISTIC_URL, "2024-01", USER_ID), true), null, 2, null);
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode(),
+                "Reason: an unresolvable report requester must fail the request, not publish a recipient-less event");
+        assertEquals(countBefore, monthStatisticRepository.count(),
+                "Reason: the lookup happens inside the transactional pipeline, so the statistic row rolls back");
         verifyNoInteractions(statisticEventProducer);
     }
 }

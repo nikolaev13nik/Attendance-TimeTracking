@@ -485,6 +485,8 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
         verifyMonthStatisticDbState(stat, 2);
 
         verifyNoInteractions(statisticEventProducer);
+        // the report flag gates the Accounting lookup too, not only the publishing
+        verifyNoInteractions(accountApi);
     }
 
     @Test

@@ -5,7 +5,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.HandlerMapping;
@@ -31,7 +30,7 @@ public class TenantInterceptor implements HandlerInterceptor {
             return true;
         }
 
-        String jwtTenantId = getJwtTenantId(pathTenantId, auth);
+        String jwtTenantId = JwtClaimsResolver.currentTenantId(auth);
         if (jwtTenantId == null) {
             log.error("Request was rejected: lack of tenant ID in security context");
             response.sendError(HttpServletResponse.SC_FORBIDDEN,
@@ -55,13 +54,6 @@ public class TenantInterceptor implements HandlerInterceptor {
         if (uriVars instanceof Map<?, ?> pathVars) {
             Object tenantId = pathVars.get(TENANT_ID_PATH);
             return tenantId != null ? tenantId.toString() : null;
-        }
-        return null;
-    }
-
-    private String getJwtTenantId(String pathTenantId, Authentication auth) {
-        if (auth != null && auth.getPrincipal() instanceof Jwt jwt) {
-            return jwt.getClaimAsString(TENANT_ID_PATH);
         }
         return null;
     }

@@ -21,6 +21,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
+import att.client.accounting.api.AccountApi;
+import att.client.accounting.dto.UserProfileDto;
 import att.dao.LeaveDaysRepository;
 import att.dao.MonthStatisticRepository;
 import att.dao.SessionAttendanceTimeRepository;
@@ -41,6 +43,7 @@ import static java.util.Optional.ofNullable;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.when;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @TestExecutionListeners(
@@ -100,6 +103,38 @@ public abstract class BaseApiControllerTest {
     protected static final String SEEDED_STAT_FUTURE_MONTH = "2024-02";
     @MockitoBean
     protected StatisticEventProducer statisticEventProducer;
+
+    /**
+     * The {@code sub} claim carried by {@link #jwtTokenAdministrator} - the report requester in these tests.
+     */
+    protected static final Integer ADMIN_SUB_ID = 123456789;
+    protected static final String REPORT_FIRST_NAME = "John";
+    protected static final String REPORT_LAST_NAME = "Doe";
+    protected static final String REPORT_EMAIL = "john.doe@example.com";
+
+    @MockitoBean
+    protected AccountApi accountApi;
+
+    /**
+     * Makes Attendance-Accounting answer the report-requester lookup the statistic pipeline performs.
+     */
+    protected void stubReportRequester(int tenantId) {
+        when(accountApi.getUser(tenantId, ADMIN_SUB_ID)).thenReturn(new UserProfileDto()
+                .idUser(ADMIN_SUB_ID)
+                .tenantId(tenantId)
+                .firstName(REPORT_FIRST_NAME)
+                .lastName(REPORT_LAST_NAME)
+                .email(REPORT_EMAIL));
+    }
+
+    protected void assertReportRequester(String reportUserName, String reportUserLastName, String reportEmail) {
+        assertEquals(REPORT_FIRST_NAME, reportUserName,
+                "Reason: the requester's first name resolved from Accounting must travel on the event");
+        assertEquals(REPORT_LAST_NAME, reportUserLastName,
+                "Reason: the requester's last name resolved from Accounting must travel on the event");
+        assertEquals(REPORT_EMAIL, reportEmail,
+                "Reason: the AI service can only notify the requester if the email travels on the event");
+    }
 
 
     private final RestTemplate rest = createRestTemplate();

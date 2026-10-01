@@ -43,7 +43,7 @@ public class StatisticEnrichmentConsumer {
                 .findTop7ByMonthStatisticKeyTenantIdAndMonthStatisticKeyIdUserAndMonthStatisticKeyMonthStartDateLessThanEqualOrderByMonthStatisticKeyMonthStartDateDesc(
                         event.getTenantId(), event.getUserId(), monthStart);
         statisticEventPublisher.sendUserStatisticAnalysisRequest(event.getUserId(), monthStatisticMapper
-                .toAnalysisRequest(event.getTenantId(), event.getUserId(), lastMonths.stream()
+                .toAnalysisRequest(event, lastMonths.stream()
                         .map(monthStatisticMapper::toHistoryEntry)
                         .toList()));
     }

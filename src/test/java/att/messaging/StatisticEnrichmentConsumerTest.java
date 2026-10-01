@@ -24,6 +24,7 @@ import jakarta.validation.Validator;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
@@ -48,12 +49,17 @@ class StatisticEnrichmentConsumerTest extends BaseApiControllerTest {
      * The history under test comes from V3__att_month_statistic_setup.sql (tenant 2 / SEEDED_STAT_USER_ID).
      */
     private UserStatisticAnalysisRequestEvent sendMsToEnrichConsumer() {
-        MonthStatisticEvent event = MonthStatisticEvent.builder()
+        return sendMsToEnrichConsumer(MonthStatisticEvent.builder()
                 .tenantId(2)
                 .userId(SEEDED_STAT_USER_ID)
                 .yearMonth(YearMonth.parse(SEEDED_STAT_TARGET_MONTH))
-                .build();
+                .reportUserName(REPORT_FIRST_NAME)
+                .reportUserLastName(REPORT_LAST_NAME)
+                .reportEmail(REPORT_EMAIL)
+                .build());
+    }
 
+    private UserStatisticAnalysisRequestEvent sendMsToEnrichConsumer(MonthStatisticEvent event) {
         enrichmentConsumer().accept(MessageBuilder.withPayload(event).build());
 
         ArgumentCaptor<UserStatisticAnalysisRequestEvent> captor =
@@ -69,6 +75,8 @@ class StatisticEnrichmentConsumerTest extends BaseApiControllerTest {
         UserStatisticAnalysisRequestEvent analysis = sendMsToEnrichConsumer();
         assertEquals(2, analysis.getTenantId());
         assertEquals(SEEDED_STAT_USER_ID, analysis.getUserId());
+        assertReportRequester(analysis.getReportUserName(), analysis.getReportUserLastName(),
+                analysis.getReportEmail());
 
         List<YearMonth> entryMonths = analysis.getEntries().stream()
                 .map(entry -> entry.getYearMonth()).toList();
@@ -112,6 +120,24 @@ class StatisticEnrichmentConsumerTest extends BaseApiControllerTest {
         assertEquals(168.0, previous.getTotalWorkHours());
         assertEquals(2.0, previous.getVacationDays());
         assertEquals(1.5, previous.getSickDays());
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("a trigger event without report-requester fields is still forwarded, with those fields left empty")
+    void enrichment_triggerEventWithoutRequester_forwardsWithoutRequesterTest() {
+        UserStatisticAnalysisRequestEvent analysis = sendMsToEnrichConsumer(MonthStatisticEvent.builder()
+                .tenantId(2)
+                .userId(SEEDED_STAT_USER_ID)
+                .yearMonth(YearMonth.parse(SEEDED_STAT_TARGET_MONTH))
+                .build());
+
+        assertNull(analysis.getReportUserName(),
+                "Reason: the requester fields are optional, so a trigger event without them must not fail enrichment");
+        assertNull(analysis.getReportUserLastName());
+        assertNull(analysis.getReportEmail());
+        assertFalse(analysis.getEntries().isEmpty(),
+                "Reason: the history must still be attached when there is no requester to notify");
     }
 
     @Test

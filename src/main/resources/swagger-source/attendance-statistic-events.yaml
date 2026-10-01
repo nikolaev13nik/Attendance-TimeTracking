@@ -68,12 +68,34 @@ definitions:
         description: Total sick days taken in the month
         example: 0.0
 
+  ReportRequesterContext:
+    type: object
+    description: Identity of the user who requested the report (the JWT sub of the caller), resolved from
+      Attendance-Accounting and carried to every statistic topic so the downstream AI Assistance &
+      Notification service knows who to address and where to send the analysis. Optional on purpose -
+      messages produced before this contract existed must stay deserializable.
+    properties:
+      reportUserName:
+        type: string
+        description: First name of the user who requested the report
+        example: John
+      reportUserLastName:
+        type: string
+        description: Last name of the user who requested the report
+        example: Doe
+      reportEmail:
+        type: string
+        format: email
+        description: Email address the analysis is sent to
+        example: john.doe@example.com
+
   MonthStatisticEvent:
     description: Published when a user's monthly statistics have been computed; triggers enrichment
       and forwarding to the AI Assistance & Notification service. Carries only the identity and target
       month - the consumer looks up the statistic figures (including the target month's) from the DB.
     allOf:
       - $ref: '#/definitions/TenantUserContext'
+      - $ref: '#/definitions/ReportRequesterContext'
       - type: object
         required:
           - yearMonth
@@ -99,6 +121,7 @@ definitions:
       history, requesting AI trend analysis for the user
     allOf:
       - $ref: '#/definitions/TenantUserContext'
+      - $ref: '#/definitions/ReportRequesterContext'
       - type: object
         properties:
           entries:

@@ -31,6 +31,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class AccountingClientConfigurationTest {
 
     private static final Integer ID_USER = 42;
+    private static final Integer TENANT_ID = 100;
+    private static final String USER_PATH = "/account/tenant/" + TENANT_ID + "/userId/" + ID_USER;
     private static final String TOKEN_VALUE = "caller-jwt-token";
     @RegisterExtension
     static WireMockExtension wireMock = WireMockExtension.newInstance().options(
@@ -61,45 +63,60 @@ class AccountingClientConfigurationTest {
     }
 
     @Test
-    void getUserInfo_parsesResponse_andForwardsCallerJwt() {
+    void getUser_parsesResponse_andForwardsCallerJwt() {
         authenticateAs(TOKEN_VALUE);
-        wireMock.stubFor(get(urlEqualTo("/account/user/" + ID_USER)).willReturn(okJson(
-                "{\"idUser\":42,\"firstName\":\"Jane\",\"lastName\":\"Doe\",\"roles\":[\"USER\"]}")));
+        wireMock.stubFor(get(urlEqualTo(USER_PATH)).willReturn(okJson(
+                "{\"idUser\":42,\"firstName\":\"Jane\",\"lastName\":\"Doe\",\"email\":\"jane.doe@example.com\","
+                        + "\"tenantId\":100,\"roles\":[\"USER\"]}")));
 
-        UserProfileDto result = buildAccountApiPointedAtWireMock().getUserInfo(ID_USER);
+        UserProfileDto result = buildAccountApiPointedAtWireMock().getUser(TENANT_ID, ID_USER);
 
         assertEquals(ID_USER, result.getIdUser());
         assertEquals("Jane", result.getFirstName());
         assertEquals("Doe", result.getLastName());
+        assertEquals("jane.doe@example.com", result.getEmail());
+        assertEquals(TENANT_ID, result.getTenantId());
         assertEquals(Set.of("USER"), result.getRoles());
-        wireMock.verify(getRequestedFor(urlEqualTo("/account/user/" + ID_USER))
+        wireMock.verify(getRequestedFor(urlEqualTo(USER_PATH))
                 .withHeader("Authorization", equalTo("Bearer " + TOKEN_VALUE)));
     }
 
     @Test
-    void getUserInfo_notFoundUpstream_throwsNotFoundException() {
+    void getUser_notFoundUpstream_throwsNotFoundException() {
         authenticateAs(TOKEN_VALUE);
-        wireMock.stubFor(get(urlEqualTo("/account/user/" + ID_USER)).willReturn(aResponse().withStatus(404)));
+        wireMock.stubFor(get(urlEqualTo(USER_PATH)).willReturn(aResponse().withStatus(404)));
 
-        assertThrows(NotFoundException.class, () -> buildAccountApiPointedAtWireMock().getUserInfo(ID_USER));
+        assertThrows(NotFoundException.class, () -> buildAccountApiPointedAtWireMock().getUser(TENANT_ID, ID_USER));
+    }
+
+    /**
+     * Accounting answers an unknown user/tenant pair with 400, not 404, so "no such user" reaches the caller as
+     * {@link InternalApiException} - which is why a failed report-requester lookup surfaces as a 500.
+     */
+    @Test
+    void getUser_unknownUserUpstream_throwsInternalApiException() {
+        authenticateAs(TOKEN_VALUE);
+        wireMock.stubFor(get(urlEqualTo(USER_PATH)).willReturn(aResponse().withStatus(400)));
+
+        assertThrows(InternalApiException.class, () -> buildAccountApiPointedAtWireMock().getUser(TENANT_ID, ID_USER));
     }
 
     @Test
-    void getUserInfo_upstreamFailure_throwsInternalApiException() {
+    void getUser_upstreamFailure_throwsInternalApiException() {
         authenticateAs(TOKEN_VALUE);
-        wireMock.stubFor(get(urlEqualTo("/account/user/" + ID_USER)).willReturn(aResponse().withStatus(500)));
+        wireMock.stubFor(get(urlEqualTo(USER_PATH)).willReturn(aResponse().withStatus(500)));
 
-        assertThrows(InternalApiException.class, () -> buildAccountApiPointedAtWireMock().getUserInfo(ID_USER));
+        assertThrows(InternalApiException.class, () -> buildAccountApiPointedAtWireMock().getUser(TENANT_ID, ID_USER));
     }
 
     @Test
-    void getUserInfo_noAuthenticationInContext_sendsRequestWithoutAuthorizationHeader() {
-        wireMock.stubFor(get(urlEqualTo("/account/user/" + ID_USER)).willReturn(okJson(
+    void getUser_noAuthenticationInContext_sendsRequestWithoutAuthorizationHeader() {
+        wireMock.stubFor(get(urlEqualTo(USER_PATH)).willReturn(okJson(
                 "{\"idUser\":42,\"firstName\":\"Jane\",\"lastName\":\"Doe\",\"roles\":[]}")));
 
-        buildAccountApiPointedAtWireMock().getUserInfo(ID_USER);
+        buildAccountApiPointedAtWireMock().getUser(TENANT_ID, ID_USER);
 
-        wireMock.verify(getRequestedFor(urlEqualTo("/account/user/" + ID_USER))
+        wireMock.verify(getRequestedFor(urlEqualTo(USER_PATH))
                 .withoutHeader("Authorization"));
     }
 }

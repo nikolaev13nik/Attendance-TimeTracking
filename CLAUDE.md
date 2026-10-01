@@ -54,10 +54,9 @@ regenerates, then implement/adjust the code. Never hand-write a class into `att.
 exclusions.
 
 `attendance-accounting-account.yaml` is a **manually synced local copy** of Attendance-Accounting's own
-spec, kept here only to drive client codegen. It carries a locally-added placeholder path
-(`GET /account/user/{idUser}`, `getUserInfo`) that does not exist upstream, and it is already drifting
-from upstream (which has since replaced it with `GET /account/tenant/{tenantId}/userId/{idUser}`). Re-copy
-from upstream and reconcile rather than assuming the two match.
+spec, kept here only to drive client codegen. Nothing guarantees the two stay in step — re-copy from
+upstream and reconcile rather than assuming they match. The `getUser` operation
+(`GET /account/tenant/{tenantId}/userId/{idUser}`) is the one this service actually calls.
 
 ### Request pipeline: strategy services over a shared mutable context
 
@@ -132,6 +131,12 @@ names are constants in `att.messaging.MessagingConstants`:
 - `statisticAnalysisRequestProducer-out-0` → topic `att.user-statistic-ai-analysis`: the enriched
   `UserStatisticAnalysisRequestEvent` for the downstream AI service.
 
+Both payloads mix in the `ReportRequesterContext` schema, which flattens into the **outer** fields
+`reportUserName` / `reportUserLastName` / `reportEmail` on each message (one definition, reused by both
+topics). They are optional by contract so messages produced before the fields existed still deserialize —
+the recipient check belongs to the consumer. The enrichment consumer copies them straight from the trigger
+event onto the analysis request via `MonthStatisticMapper.toAnalysisRequest`.
+
 `StatisticEventProducer` sends via `StreamBridge` with the user id as the Kafka message key (partition
 affinity per user). The consumer (`StatisticEnrichmentConsumer`, a `java.util.function.Consumer` bean) is
 gated by `att.messaging.enrichment.enabled` (default true; tests set it false) and validates the payload
@@ -144,8 +149,17 @@ malformed messages go straight to the DLQ.
 connect/read timeouts from `att.integration.attendance-accounting.*`, an interceptor that **forwards the
 caller's JWT** from the `SecurityContextHolder` (so downstream authorization sees the original user), and
 `InternalApiResponseErrorHandler`, which maps 404 → `NotFoundException` and any other error →
-`InternalApiException`. Reuse that error handler for any further internal client. Note: the bean is wired
-and tested but **no production code calls `AccountApi` yet**.
+`InternalApiException`. Reuse that error handler for any further internal client.
+
+The one production caller is `StatisticInfoService.resolveReportRequester`, which looks up the **report
+requester** — the caller identified by the JWT `sub`, read through `att.security.JwtClaimsResolver` — with
+`getUser(pathTenantId, sub)`, but **only when `report=true`**. The resolved `UserProfileDto` is parked on
+`StatisticInfoHolder.reportRequester` and its name/email are published as the `reportUserName` /
+`reportUserLastName` / `reportEmail` fields of both statistic events, so the downstream AI service knows who
+to email. The lookup runs inside the transactional pipeline and is deliberately *not* wrapped: a failure
+fails the statistic request, persisting and publishing nothing, rather than emitting an event no one can be
+notified from. Beware that Accounting answers an unknown user/tenant pair with **400, not 404**, so a `sub`
+that is not a member of the path tenant surfaces as a 500 `InternalApiException`.
 
 ### Multi-tenancy & authorization
 
@@ -187,8 +201,9 @@ and tested but **no production code calls `AccountApi` yet**.
   exist; monthly statistics are computed on demand by `POST /attendance/statistic/tenant/{tenantId}` with
   `report=true`. There is no daily-conflict Kafka flow either — only the month-statistic pair of topics
   above.
-- **No inbound call to Accounting.** `AccountApi` is configured but unused in production code (see above).
-- Don't reference a scheduler, a conflict topic, or an Accounting lookup as if it exists — check first.
+- **Only one call to Accounting.** `AccountApi` is used by the report-requester lookup and nothing else
+  (see above); no other endpoint enriches its response from Accounting.
+- Don't reference a scheduler or a conflict topic as if it exists — check first.
 
 ## Testing conventions
 

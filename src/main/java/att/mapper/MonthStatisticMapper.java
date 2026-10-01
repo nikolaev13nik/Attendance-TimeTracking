@@ -8,6 +8,7 @@ import java.time.YearMonth;
 
 import java.util.List;
 
+import att.client.accounting.dto.UserProfileDto;
 import att.context.DataTimeContext;
 import att.dto.MonthlyUserStatisticInfoDto;
 import att.messaging.dto.MonthStatisticEvent;
@@ -33,9 +34,22 @@ public interface MonthStatisticMapper {
     @Mapping(target = "yearMonth", expression = "java(YearMonth.from(entity.getMonthStatisticKey().getMonthStartDate()))")
     UserStatisticHistoryEntryDto toHistoryEntry(MonthStatistic entity);
 
-    MonthStatisticEvent toEvent(MonthlyUserStatisticInfoDto dto);
+    // every target is mapped explicitly: both sources expose tenantId, which MapStruct would otherwise
+    // report as an ambiguous mapping source
+    @Mapping(target = "tenantId", source = "dto.tenantId")
+    @Mapping(target = "userId", source = "dto.userId")
+    @Mapping(target = "yearMonth", source = "dto.yearMonth")
+    @Mapping(target = "reportUserName", source = "reportRequester.firstName")
+    @Mapping(target = "reportUserLastName", source = "reportRequester.lastName")
+    @Mapping(target = "reportEmail", source = "reportRequester.email")
+    MonthStatisticEvent toEvent(MonthlyUserStatisticInfoDto dto, UserProfileDto reportRequester);
 
-    UserStatisticAnalysisRequestEvent toAnalysisRequest(Integer tenantId, Integer userId,
+    /**
+     * Forwards the trigger event's identity and report-requester fields onto the analysis request, so the requester
+     * resolved once in the statistic pipeline reaches the AI service unchanged.
+     */
+    @Mapping(target = "entries", source = "entries")
+    UserStatisticAnalysisRequestEvent toAnalysisRequest(MonthStatisticEvent source,
                                                         List<UserStatisticHistoryEntryDto> entries);
 
 }

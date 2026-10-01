@@ -9,5 +9,7 @@ public class ErrorConstants {
     public static final String INCOMPLETE_SESSIONS_MSG = "There are incomplete sessions to be handled";
     public static final String LEAVE_DAY_AMOUNT_EXCEEDS_FULL_DAY_MSG =
             "Leave day %s exceeds a full day: vacation:%s, sick:%s";
+    public static final String REPORT_REQUESTER_UNRESOLVED_MSG =
+            "Reporting user cannot be resolved: the request carries no user id";
 
 }
