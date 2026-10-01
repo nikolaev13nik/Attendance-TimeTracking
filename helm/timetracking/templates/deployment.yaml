@@ -54,33 +54,24 @@ spec:
                   name: {{ .Values.config.name }}
                   key: SPRING_JPA_DATABASE_PLATFORM
 
-            {{- /* DIFFERS: the service-to-service call. Resolves to the `accounting`
-                   Service created by the OTHER repo's chart - a Service name, and the
-                   CONTAINER port 8080, never localhost and never a host port. */}}
             - name: ATTENDANCE_ACCOUNTING_BASE_URL
               valueFrom:
                 configMapKeyRef:
                   name: {{ .Values.config.name }}
                   key: {{ .Values.accountingBaseUrlKey }}
 
-            {{- /* DIFFERS: only this service talks to Kafka. */}}
             - name: KAFKA_BOOTSTRAP_SERVERS
               valueFrom:
                 configMapKeyRef:
                   name: {{ .Values.config.name }}
                   key: {{ .Values.kafkaBootstrapServersKey }}
 
-            {{- /* $(VAR) is expanded by KUBERNETES and only sees variables defined
-                   EARLIER in this list, so the two POSTGRES_* entries must stay above.
-                   DIFFERS from accounting only in the schema. */}}
             - name: SPRING_DATASOURCE_URL
               value: "jdbc:postgresql://$(POSTGRES_HOST):$(POSTGRES_PORT)/{{ .Values.database.name }}?currentSchema={{ .Values.database.schema }}"
 
             - name: SPRING_DATASOURCE_USERNAME
               value: {{ .Values.database.username | quote }}
 
-            {{- /* One key at a time, not `envFrom: secretRef` - otherwise this pod
-                   would also receive accounting's database password. */}}
             - name: SPRING_DATASOURCE_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -93,7 +84,6 @@ spec:
                   name: {{ .Values.secret.name }}
                   key: {{ .Values.jwtSecretKey }}
 
-            {{- /* Emitted only when set, so the image keeps owning the defaults. */}}
             {{- with .Values.connectTimeoutMs }}
             - name: ATT_INTEGRATION_ATTENDANCE_ACCOUNTING_CONNECT_TIMEOUT_MS
               value: {{ . | quote }}

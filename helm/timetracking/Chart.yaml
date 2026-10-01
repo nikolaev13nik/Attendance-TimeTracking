@@ -3,9 +3,6 @@ name: timetracking
 description: Time-tracking service. Validates Accounting's JWTs, calls Accounting over HTTP, publishes to Kafka.
 type: application
 
-# The CHART's own version - bump when templates or values change.
 version: 0.1.0
 
-# Default image tag when nothing overrides it. Quoted: 1.0.11 unquoted is not a
-# valid YAML string. --set image.tag=... wins over this; see values.yaml.
 appVersion: "1.0.12"
