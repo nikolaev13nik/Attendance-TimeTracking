@@ -1,13 +1,3 @@
-# NOTE: This is a LOCAL COPY of Attendance-Accounting's own spec
-# (Attendance-Accounting/src/main/resources/swagger-source/attendance-accounting-account.yaml),
-# kept here to drive this service's outbound client codegen (att.client.accounting.*).
-# It is manually synced, not the source of truth — re-copy from upstream when that API changes.
-#
-# The GET /account/user/{idUser} (getUserInfo) path below is a PLACEHOLDER added locally:
-# it does not exist in the upstream spec yet. It exists so this service's client/codegen has a
-# real, usable method to build against ahead of time. When the real endpoint is published
-# upstream, re-copy the spec and reconcile this path (shape may differ) instead of assuming it
-# matches.
 swagger: '2.0'
 
 info:
@@ -25,6 +15,16 @@ tags:
   - name: Account
     description: User account management
 
+securityDefinitions:
+  bearerAuth:
+    type: apiKey
+    name: Authorization
+    in: header
+    description: JWT. Format `Bearer {token}` (obtained from POST /account/login).
+
+security:
+  - bearerAuth: [ ]
+
 paths:
 
   /account/user:
@@ -33,6 +33,7 @@ paths:
       operationId: register
       tags:
         - Account
+      security: [ ]
       parameters:
         - name: UserRegisterDto
           in: body
@@ -55,34 +56,6 @@ paths:
           $ref: '#/responses/500-InternalServerError'
 
   /account/user/{idUser}:
-    get:
-      summary: |
-        PLACEHOLDER (not yet published upstream) - gets a user's info
-      operationId: getUserInfo
-      tags:
-        - Account
-      parameters:
-        - name: idUser
-          in: path
-          description: |
-            Unique identifier of the user
-          required: true
-          type: integer
-          format: int32
-          minimum: 1
-      responses:
-        '200':
-          description: |
-            User profile
-          schema:
-            $ref: '#/definitions/UserProfileDto'
-        '401':
-          $ref: '#/responses/401-Unauthorized'
-        '404':
-          $ref: '#/responses/404-NotFound'
-        '500':
-          $ref: '#/responses/500-InternalServerError'
-
     delete:
       summary: Removes a user
       operationId: removeUser
@@ -226,14 +199,58 @@ paths:
       operationId: getAllUsers
       tags:
         - Account
+      parameters:
+        - name: tenantId
+          in: query
+          description: |
+            When provided, only users belonging to this tenant are returned
+          required: false
+          type: integer
+          format: int32
       responses:
         '200':
           description: |
-            All user profiles
+            All user profiles, or users of the given tenant when tenantId is provided
           schema:
             type: array
             items:
               $ref: '#/definitions/UserProfileDto'
+        '401':
+          $ref: '#/responses/401-Unauthorized'
+        '500':
+          $ref: '#/responses/500-InternalServerError'
+
+  /account/tenant/{tenantId}/userId/{idUser}:
+    get:
+      summary: Gets a user by tenant and user ID
+      operationId: getUser
+      tags:
+        - Account
+      parameters:
+        - name: tenantId
+          in: path
+          description: |
+            Identifier of the tenant the user belongs to
+          required: true
+          type: integer
+          format: int32
+          minimum: 1
+        - name: idUser
+          in: path
+          description: |
+            Unique identifier of the user
+          required: true
+          type: integer
+          format: int32
+          minimum: 1
+      responses:
+        '200':
+          description: |
+            User profile belonging to the given tenant
+          schema:
+            $ref: '#/definitions/UserProfileDto'
+        '400':
+          $ref: '#/responses/400-BadRequest'
         '401':
           $ref: '#/responses/401-Unauthorized'
         '500':
@@ -266,9 +283,22 @@ definitions:
         description: |
           Last name of the user
         type: string
+      email:
+        description: |
+          Email address of the user
+        type: string
+        format: email
+      tenantId:
+        description: |
+          Identifier of the tenant the user belongs to
+        type: integer
+        format: int32
+        minimum: 1
     required:
       - idUser
       - password
+      - email
+      - tenantId
 
   UserEditDto:
     type: object
@@ -287,6 +317,11 @@ definitions:
         description: |
           New password of the user
         type: string
+      email:
+        description: |
+          New email address of the user
+        type: string
+        format: email
 
   UserProfileDto:
     type: object
@@ -306,6 +341,16 @@ definitions:
         description: |
           Last name of the user
         type: string
+      email:
+        description: |
+          Email address of the user
+        type: string
+        format: email
+      tenantId:
+        description: |
+          Identifier of the tenant the user belongs to
+        type: integer
+        format: int32
       roles:
         description: |
           Roles assigned to the user
@@ -355,56 +400,6 @@ definitions:
           Last name of the user
         type: string
 
-  DataTimeDto:
-    type: object
-    description: |
-      A single work-time record
-    properties:
-      id:
-        description: |
-          Unique identifier of the record
-        type: integer
-        format: int32
-      user:
-        $ref: '#/definitions/UserDto'
-      date:
-        description: |
-          Calendar day of the record
-        type: string
-        format: date
-      start:
-        description: |
-          Moment the record was started
-        type: string
-        format: date-time
-      finish:
-        description: |
-          Moment the record was finished
-        type: string
-        format: date-time
-
-  EditDataTimeUserDto:
-    type: object
-    description: |
-      Input for editing a work-time record's start and/or finish
-    properties:
-      id:
-        description: |
-          Unique identifier of the record to edit
-        type: integer
-        format: int32
-      start:
-        description: |
-          New start moment
-        type: string
-        format: date-time
-      finish:
-        description: |
-          New finish moment
-        type: string
-        format: date-time
-
-
 responses:
 
   400-BadRequest:
@@ -422,12 +417,6 @@ responses:
   403-Forbidden:
     description: |
       Forbidden - the authenticated user is not allowed to perform this operation.
-    schema:
-      $ref: '#/definitions/ApiError'
-
-  404-NotFound:
-    description: |
-      Not Found - the requested resource does not exist.
     schema:
       $ref: '#/definitions/ApiError'
 
