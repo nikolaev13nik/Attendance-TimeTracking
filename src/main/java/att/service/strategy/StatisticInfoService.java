@@ -1,5 +1,7 @@
 package att.service.strategy;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -28,6 +30,7 @@ import static org.hibernate.internal.util.collections.CollectionHelper.isNotEmpt
 public class StatisticInfoService extends BaseGetService<Void> {
 
     private static final int MINUTES_PER_HOUR = 60;
+    private static final Logger logger = LoggerFactory.getLogger(StatisticInfoService.class);
 
     @Autowired
     private GetWorkedMinutesBetweenService getWorkedMinutesBetweenService;
@@ -113,10 +116,10 @@ public class StatisticInfoService extends BaseGetService<Void> {
      */
     private void resolveReportRequester(DataTimeContext<Void> context) {
         StatisticInfoHolder holder = context.getStatisticInfoHolder();
-        if (!Boolean.TRUE.equals(holder.getReport()) || holder.getReportRequester() != null) {
-            return;
+        if (Boolean.TRUE.equals(holder.getReport()) && holder.getReportRequester() == null) {
+            holder.setReportRequester(accountApi.getUser(context.getTenantId(), JwtClaimsResolver.currentUserId()));
+            logger.info("Target reporter is:{}", holder.getReportRequester());
         }
-        holder.setReportRequester(accountApi.getUser(context.getTenantId(), JwtClaimsResolver.currentUserId()));
     }
 
     private void populateLeaveDayTotals(DataTimeContext<Void> context, Integer userId) {

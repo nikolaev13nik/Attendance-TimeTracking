@@ -1,5 +1,7 @@
 package att.messaging.consumer;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -20,6 +22,8 @@ import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
 
+import static java.util.Optional.ofNullable;
+
 @Configuration
 @RequiredArgsConstructor
 @ConditionalOnProperty(name = "att.messaging.enrichment.enabled", havingValue = "true", matchIfMissing = true)
@@ -29,6 +33,7 @@ public class StatisticEnrichmentConsumer {
     private final MonthStatisticMapper monthStatisticMapper;
     private final StatisticEventProducer statisticEventPublisher;
     private final Validator validator;
+    private static final Logger logger = LoggerFactory.getLogger(StatisticEnrichmentConsumer.class);
 
     @Bean
     public Consumer<Message<MonthStatisticEvent>> monthStatisticEnrichment() {
@@ -42,6 +47,8 @@ public class StatisticEnrichmentConsumer {
         List<MonthStatistic> lastMonths = monthStatisticRepository
                 .findTop7ByMonthStatisticKeyTenantIdAndMonthStatisticKeyIdUserAndMonthStatisticKeyMonthStartDateLessThanEqualOrderByMonthStatisticKeyMonthStartDateDesc(
                         event.getTenantId(), event.getUserId(), monthStart);
+        ofNullable(event.getReportEmail()).ifPresentOrElse(reportEmail -> logger.info("Reported Email is found"),
+                () -> logger.info("Reported Email is not found"));
         statisticEventPublisher.sendUserStatisticAnalysisRequest(event.getUserId(), monthStatisticMapper
                 .toAnalysisRequest(event, lastMonths.stream()
                         .map(monthStatisticMapper::toHistoryEntry)

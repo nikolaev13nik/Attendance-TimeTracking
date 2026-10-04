@@ -9,8 +9,14 @@ service discovery layer (see `../attendance-project-common/docs/TimeTracker_docs
 design). Do not implement authentication, user registration, or role management here — that's owned by
 the sibling **Attendance-Accounting** service (`../Attendance-Accounting`), which issues the JWTs this
 service only *validates* (`att.security`). This service is the source of attendance/time-tracking data
-and monthly statistics; a downstream **AI Assistance & Notification** service consumes the statistics
-over Kafka (topic `att.user-statistic-ai-analysis`) and is not part of this repo.
+and monthly statistics; the downstream **AI Assistance & Notification** service
+(`../Attendance-AI-Assistance`) consumes the statistics over Kafka (topic
+`att.user-statistic-ai-analysis`), asks an LLM for a trend analysis and emails it to whoever requested the
+report. It is a separate repo — keep AI and notification logic out of this one.
+
+That service copies this repo's `attendance-statistic-events.yaml` verbatim to generate its own payload
+classes, so **a change to that spec is a change to a published contract**: edit both copies in the same
+change and keep them byte-identical (`diff` the two files to check).
 
 ## Commands
 
@@ -129,7 +135,9 @@ names are constants in `att.messaging.MessagingConstants`:
   (`MonthStatisticRepository.findTop7...`, anchored on the event's month, most recent first), and
   republishes.
 - `statisticAnalysisRequestProducer-out-0` → topic `att.user-statistic-ai-analysis`: the enriched
-  `UserStatisticAnalysisRequestEvent` for the downstream AI service.
+  `UserStatisticAnalysisRequestEvent`, consumed by `../Attendance-AI-Assistance` (group
+  `att-ai-assistance`, its own DLQ). It is a live consumer, not a placeholder: dropping a field from this
+  payload breaks a deployed service.
 
 Both payloads mix in the `ReportRequesterContext` schema, which flattens into the **outer** fields
 `reportUserName` / `reportUserLastName` / `reportEmail` on each message (one definition, reused by both
