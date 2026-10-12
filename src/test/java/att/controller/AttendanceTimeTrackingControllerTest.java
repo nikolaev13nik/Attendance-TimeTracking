@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.YearMonth;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
@@ -23,9 +24,11 @@ import att.model.LeaveDay;
 import att.model.LeaveType;
 
 import static att.exceptions.ErrorConstants.ATTENDANCE_NOT_FOUND_MSG;
+import static att.exceptions.ErrorConstants.FUTURE_WORK_DATE_MSG;
 import static att.exceptions.ErrorConstants.INCOMPLETE_SESSIONS_MSG;
 import static att.exceptions.ErrorConstants.LEAVE_DAY_AMOUNT_EXCEEDS_FULL_DAY_MSG;
 import static att.exceptions.ErrorConstants.OPEN_CLOSE_DATE_MISSING_MSG;
+import static att.exceptions.ErrorConstants.PREVIOUS_DAY_REQUIRES_ADMIN_MSG;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -109,22 +112,107 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
 
     @Test
     @FlywayTest
-    @DisplayName("start record with wrong worker date returns 400 -negative")
-    void openWorkSession_wrongWorkerDateTest() {
+    @DisplayName("user opens a record for today in their own offset, whatever the server zone - positive")
+    void openWorkSession_userTodayInOwnOffset_positive() {
+        long recordCountBefore = sessionAttendanceTimeRepository.count();
+        int tenant = 123;
+        for (ZoneOffset offset : List.of(ZoneOffset.ofHours(14), ZoneOffset.ofHours(-12))) {
+            OffsetDateTime openDate = OffsetDateTime.now(offset).truncatedTo(ChronoUnit.MILLIS);
+            SessionDataDto task = generateSessionDataDto(openDate.toLocalDate(), openDate, null);
+            ResponseEntity<String> response = sendRequestWithUserRole(HttpMethod.PUT, OPEN_URL, 123, tenant,
+                    task, jwtTokenUserTenant_123);
+            assertEquals(HttpStatus.OK, response.getStatusCode(),
+                    String.format("Reason: work date:%s is today in the caller's offset:%s", openDate.toLocalDate(),
+                            offset));
+            DataTimeDto body = readObject(response, DataTimeDto.class);
+            assertEquals(openDate.toLocalDate(), body.getWorkDate(),
+                    "Reason: the record must keep the caller's calendar day");
+        }
+        assertEquals(recordCountBefore + 2, sessionAttendanceTimeRepository.count(),
+                "Reason: one record per accepted request is expected");
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("user opens a record for a previous day returns 400 - negative")
+    void openWorkSession_userPreviousDay_negative() {
+        long recordCountBefore = sessionAttendanceTimeRepository.count();
+        int tenant = 123;
+        OffsetDateTime openDate = OffsetDateTime.now().minusDays(1);
+        LocalDate previousDay = openDate.toLocalDate();
+        SessionDataDto task = generateSessionDataDto(previousDay, openDate, null);
+        ResponseEntity<String> response = sendRequestWithUserRole(HttpMethod.PUT, OPEN_URL, 123, tenant,
+                task, jwtTokenUserTenant_123);
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode(),
+                "Reason: only an administrator may record a previous day");
+        assertEquals(String.format(PREVIOUS_DAY_REQUIRES_ADMIN_MSG, previousDay, previousDay.plusDays(1)),
+                errorMessage(response), "Reason: the rejection must name the previous-day rule");
+        assertEquals(recordCountBefore, sessionAttendanceTimeRepository.count(),
+                "Reason: a rejected request must not persist a record");
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("user closes a record for a previous day returns 400 - negative")
+    void closeWorkSession_userPreviousDay_negative() {
+        long recordCountBefore = sessionAttendanceTimeRepository.count();
+        int tenant = 123;
+        OffsetDateTime closeDate = OffsetDateTime.now().minusDays(1);
+        LocalDate previousDay = closeDate.toLocalDate();
+        SessionDataDto task = generateSessionDataDto(previousDay, null, closeDate);
+        ResponseEntity<String> response = sendRequestWithUserRole(HttpMethod.PUT, CLOSE_URL, 123, tenant,
+                task, jwtTokenUserTenant_123);
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode(),
+                "Reason: only an administrator may record a previous day");
+        assertEquals(String.format(PREVIOUS_DAY_REQUIRES_ADMIN_MSG, previousDay, previousDay.plusDays(1)),
+                errorMessage(response), "Reason: the rejection must name the previous-day rule");
+        assertEquals(recordCountBefore, sessionAttendanceTimeRepository.count(),
+                "Reason: a rejected request must not persist a record");
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("administrator opens and closes a record for a previous day - positive")
+    void openCloseWorkSession_adminPreviousDay_positive() {
         long recordCountBefore = sessionAttendanceTimeRepository.count();
         int tenant = 2;
-        OffsetDateTime openDate = OffsetDateTime.now();
-        LocalDate inputWrongWorkDate = LocalDate.parse("2026-08-03");
-        SessionDataDto task = generateSessionDataDto(inputWrongWorkDate, openDate, null);
-        ResponseEntity<String> response = sendRequestWithAdmin(HttpMethod.PUT, OPEN_URL, 987654, tenant,
-                task);
-        assertEquals (HttpStatus.BAD_REQUEST, response.getStatusCode());
-        assertTrue(errorMessage(response).contains(
-                String.format("Input work date:%s expects to be as", inputWrongWorkDate)));
-        long countAfter = sessionAttendanceTimeRepository.count();
+        OffsetDateTime openDate = OffsetDateTime.now().minusDays(3).truncatedTo(ChronoUnit.MILLIS);
+        OffsetDateTime closeDate = openDate.plusMinutes(1);
+        LocalDate previousDay = openDate.toLocalDate();
+        ResponseEntity<String> response = sendRequestWithAdmin(HttpMethod.PUT, OPEN_URL, OTHER_USER_ID, tenant,
+                generateSessionDataDto(previousDay, openDate, null));
+        assertEquals(HttpStatus.OK, response.getStatusCode(),
+                "Reason: an administrator may open a record for a previous day");
+        DataTimeDto opened = readObject(response, DataTimeDto.class);
+
+        response = sendRequestWithAdmin(HttpMethod.PUT, CLOSE_URL, OTHER_USER_ID, tenant,
+                generateSessionDataDto(previousDay, null, closeDate));
+        assertEquals(HttpStatus.OK, response.getStatusCode(),
+                "Reason: an administrator may close a record for a previous day");
+        DataTimeDto closed = readObject(response, DataTimeDto.class);
+        verifyRespondedBodyOpenCloseSessionApi(closed, OTHER_USER_ID, tenant, openDate, closeDate, opened.getId());
+        verifyRecordStartEndApi(closed.getId(), OTHER_USER_ID, openDate, closeDate);
+        assertEquals(previousDay, closed.getWorkDate(), "Reason: the record must keep the requested previous day");
+        assertEquals(recordCountBefore + 1, sessionAttendanceTimeRepository.count(),
+                "Reason: closing must reuse the open record of that day instead of inserting");
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("administrator opens a record for a future day returns 400 - negative")
+    void openWorkSession_adminFutureDay_negative() {
+        long recordCountBefore = sessionAttendanceTimeRepository.count();
+        int tenant = 2;
+        OffsetDateTime openDate = OffsetDateTime.now().plusDays(1);
+        LocalDate futureDay = openDate.toLocalDate();
+        ResponseEntity<String> response = sendRequestWithAdmin(HttpMethod.PUT, OPEN_URL, OTHER_USER_ID, tenant,
+                generateSessionDataDto(futureDay, openDate, null));
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode(),
+                "Reason: nobody may record a future day");
+        assertEquals(String.format(FUTURE_WORK_DATE_MSG, futureDay, futureDay.minusDays(1)), errorMessage(response),
+                "Reason: the rejection must name the future-day rule");
         assertEquals(recordCountBefore, sessionAttendanceTimeRepository.count(),
-                String.format("Reason: total count of attendance record should not be changed ,expected:%s ,exist:%s",
-                        recordCountBefore, countAfter));
+                "Reason: a rejected request must not persist a record");
     }
 
     @Test

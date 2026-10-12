@@ -40,8 +40,6 @@ public class DataTimeContext<T> implements BusinessStrategyContext {
     private List<DataTime> userWorkSessionList = new ArrayList<>();
     @Builder.Default
     private List<LeaveDay> userLeaveDaysList = new ArrayList<>();
-    @Builder.Default
-    private LocalDate currentLocalDate = LocalDate.now();
     // output - per user, keyed by idUser, so one context can be reused across a multi-user pipeline
     // (e.g. StatisticInfoService) without one user's result overwriting another's
     @Builder.Default

@@ -8,19 +8,18 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.HandlerMapping;
-
 import java.util.Map;
 import java.util.Objects;
-
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
+import static att.security.SecurityConstants.ADMINISTRATOR_AUTHORITY;
 
 @Component
 public class TenantInterceptor implements HandlerInterceptor {
 
     private static final Logger log = LoggerFactory.getLogger(TenantInterceptor.class);
     private static final String TENANT_ID_PATH = "tenantId";
-    private static final String ADMIN_ROLE = "ROLE_ADMINISTRATOR";
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response,
                              Object handler) throws Exception {
@@ -61,6 +60,6 @@ public class TenantInterceptor implements HandlerInterceptor {
     private boolean isAdmin(Authentication auth) {
         return auth.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority).filter(Objects::nonNull)
-                .anyMatch(role -> role.equals(ADMIN_ROLE));
+                .anyMatch(role -> role.equals(ADMINISTRATOR_AUTHORITY));
     }
 }

@@ -1,6 +1,7 @@
 package att.security;
 
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 
@@ -9,6 +10,7 @@ import java.util.Optional;
 import att.exceptions.BadRequestException;
 
 import static att.exceptions.ErrorConstants.REPORT_REQUESTER_UNRESOLVED_MSG;
+import static att.security.SecurityConstants.ADMINISTRATOR_AUTHORITY;
 
 /**
  * Single place that reads claims off the caller's JWT. Both the tenant check and any service needing the calling
@@ -41,6 +43,13 @@ public final class JwtClaimsResolver {
         } catch (NumberFormatException e) {
             throw new BadRequestException(REPORT_REQUESTER_UNRESOLVED_MSG);
         }
+    }
+
+    public static boolean isAdministrator() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null && auth.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch(ADMINISTRATOR_AUTHORITY::equals);
     }
 
     private static Optional<Jwt> currentJwt(Authentication auth) {
