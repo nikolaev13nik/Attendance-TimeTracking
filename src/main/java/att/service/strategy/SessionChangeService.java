@@ -14,7 +14,8 @@ public class SessionChangeService extends DataTimeServiceBase<EditDataTimeUserDt
 
     @Override
     protected void fetch(DataTimeContext<EditDataTimeUserDto> context) {
-        context.getUserWorkSessionList().add(findRecordOrThrow(context.getEditDto().getId()));
+        context.getUserWorkSessionList()
+                .add(findRecordOrThrow(context.getEditDto().getId(), context.getTenantId()));
     }
 
     @Override

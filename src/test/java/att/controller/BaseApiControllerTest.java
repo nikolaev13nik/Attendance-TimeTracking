@@ -75,6 +75,7 @@ public abstract class BaseApiControllerTest {
     protected static final String CHECK_URL = BASE_SUFFIX_URL + "/check" + TENANT_ID_URL + "/user/%s";
     protected static final String REMOVE_URL = BASE_SUFFIX_URL + "/sessionRemove" + TENANT_ID_URL + "/session/%s";
     protected static final String ADD_LEAVE_DAYS_URL = BASE_SUFFIX_URL + "/addLeaveDays/tenant/%s/userId/%s";
+    protected static final String LEAVE_DAYS_URL = BASE_SUFFIX_URL + "/leaveDays/tenant/%s/userId/%s";
     protected static final String STATISTIC_URL = BASE_SUFFIX_URL + "/statistic" + TENANT_ID_URL;
 
     protected static final Integer SEEDED_STAT_USER_ID = 7;
@@ -141,6 +142,11 @@ public abstract class BaseApiControllerTest {
 
     protected String jwtTokenAdministrator = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkiLCJleHAiOjIxMDEwMzI4MzEsImlhdCI6MTc4NTY3MjgzMSwiYXV0aG9yaXRpZXMiOlsiQURNSU4iLCJBRE1JTklTVFJBVE9SIiwiTU9ERVJBVE9SIiwiVVNFUiIsIkZBQ1RPUl9QQVNTV09SRCJdfQ.7v9mluTswU2F7GRdG5xKQxStTGn5bEy_5Dn74FYqShU";
     protected String jwtTokenUser = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjMiLCJleHAiOjIxMDEwMzI3MDIsImlhdCI6MTc4NTY3MjcwMiwiYXV0aG9yaXRpZXMiOlsiVVNFUiIsIkZBQ1RPUl9QQVNTV09SRCJdfQ.x_Jobfo63CL4eUxU6lBO11SyMG7ZdQeO5Z3S5wyjbLY";
+    /**
+     * The seeded employee: sub 2 inside tenant 2, which is where the session fixtures live.
+     */
+    protected String jwtTokenSeededUser = "eyJhbGciOiJIUzI1NiJ9.eyJ0ZW5hbnRJZCI6Miwic3ViIjoiMiIsImV4cCI6MjEwMTcwOTM0MCwiaWF0IjoxNzg2MzQ5MzQwLCJhdXRob3JpdGllcyI6WyJVU0VSIiwiRkFDVE9SX1BBU1NXT1JEIl19.i_M1miaOQhb2_VwYbyRJD9N-5sokFKEO-SreC0LX7MY";
+
     protected String jwtTokenUserTenant_123 = "eyJhbGciOiJIUzI1NiJ9" +
             ".eyJ0ZW5hbnRJZCI6MTIzLCJzdWIiOiIxMjMiLCJleHAiOjIxMDE3MDkzNDAsImlhdCI6MTc4NjM0OTM0MCwiYXV0aG9yaXRpZXMiOlsiVVNFUiIsIkZBQ1RPUl9QQVNTV09SRCJdfQ.zSHpMa_RqUSFByzlk5MxchZuInlxZihHJbPfD9gNodw";
 

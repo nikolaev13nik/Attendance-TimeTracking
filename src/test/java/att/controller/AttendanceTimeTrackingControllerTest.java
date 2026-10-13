@@ -15,6 +15,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import att.dto.DataTimeDto;
+import att.dto.LeaveDayDto;
 import att.dto.LeaveDayEntryDto;
 import att.dto.LeaveReportRequestDto;
 import att.dto.MonthlyUserStatisticInfoDto;
@@ -717,5 +718,163 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
         verifyMonthStatisticDbState(secondStat, 2);
         assertEquals(countBefore + 1, monthStatisticRepository.count(),
                 "Reason: recomputation must update the existing row in place, not add a second one");
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("GET /attendance/workdays counts a date carrying two sessions as one worked day")
+    void workdaysCountsDistinctDatesTest() {
+        ResponseEntity<String> closeBlocking = sendRequestWithAdmin(HttpMethod.POST, EDIT_URL, null, 2,
+                createEditDataTimeUserDto(SEEDED_OPEN_ID, null, OffsetDateTime.parse("2024-01-04T17:30:00Z")));
+        assertEquals(HttpStatus.OK, closeBlocking.getStatusCode());
+
+        ResponseEntity<String> before = sendRequestWithAdmin(HttpMethod.GET, range(WORKDAYS_URL, USER_ID),
+                null, 2, null);
+        assertEquals(HttpStatus.OK, before.getStatusCode());
+        assertEquals(3L, readObject(before, Long.class).longValue(),
+                "Reason: the seeded user has sessions on three distinct dates inside the range");
+
+        DataTime secondSessionSameDay = new DataTime();
+        secondSessionSameDay.setTenantId(2);
+        secondSessionSameDay.setIdUser(USER_ID);
+        secondSessionSameDay.setWorkDate(LocalDate.parse(SEEDED_DAY));
+        secondSessionSameDay.setOpenSessionDate(OffsetDateTime.parse("2024-01-02T18:30:00Z"));
+        secondSessionSameDay.setCloseSessionDate(OffsetDateTime.parse("2024-01-02T20:00:00Z"));
+        sessionAttendanceTimeRepository.save(secondSessionSameDay);
+
+        ResponseEntity<String> after = sendRequestWithAdmin(HttpMethod.GET, range(WORKDAYS_URL, USER_ID),
+                null, 2, null);
+        assertEquals(HttpStatus.OK, after.getStatusCode());
+        assertEquals(3L, readObject(after, Long.class).longValue(),
+                "Reason: a second session on " + SEEDED_DAY + " is a break within one worked day, not a fourth day");
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("edit record for a session owned by another tenant returns 404 and leaves it unchanged")
+    void editRecordOtherTenantTest() {
+        OffsetDateTime closeBefore = sessionAttendanceTimeRepository.findById(SEEDED_FINISHED_ID)
+                .orElseThrow().getCloseSessionDate();
+
+        ResponseEntity<String> response = sendRequestWithAdmin(HttpMethod.POST, EDIT_URL, null, 1,
+                createEditDataTimeUserDto(SEEDED_FINISHED_ID, null,
+                        OffsetDateTime.parse("2024-01-03T23:00:00Z")));
+
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode(),
+                "Reason: session " + SEEDED_FINISHED_ID + " belongs to tenant 2 and must be invisible under tenant 1");
+        assertEquals(String.format(ATTENDANCE_NOT_FOUND_MSG, SEEDED_FINISHED_ID), errorMessage(response));
+
+        OffsetDateTime closeAfter = sessionAttendanceTimeRepository.findById(SEEDED_FINISHED_ID)
+                .orElseThrow().getCloseSessionDate();
+        assertEquals(closeBefore.toInstant(), closeAfter.toInstant(),
+                "Reason: a rejected cross-tenant edit must not write to the other tenant's session");
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("DELETE session owned by another tenant returns 404 and keeps the session")
+    void removeSessionOtherTenantTest() {
+        long recordCountBefore = sessionAttendanceTimeRepository.count();
+
+        ResponseEntity<String> response = sendDeleteRequestWithAdmin(HttpMethod.DELETE, REMOVE_URL,
+                SEEDED_FINISHED_ID, 1, null);
+
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode(),
+                "Reason: session " + SEEDED_FINISHED_ID + " belongs to tenant 2 and must be invisible under tenant 1");
+        assertEquals(String.format(ATTENDANCE_NOT_FOUND_MSG, SEEDED_FINISHED_ID), errorMessage(response));
+        assertTrue(sessionAttendanceTimeRepository.existsById(SEEDED_FINISHED_ID),
+                "Reason: a rejected cross-tenant delete must leave the other tenant's session in place");
+        assertEquals(recordCountBefore, sessionAttendanceTimeRepository.count(),
+                "Reason: no row may be removed by a cross-tenant delete");
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("an employee may read their own sessions without being an administrator")
+    void sessionsForSelfAsUserTest() {
+        ResponseEntity<String> response = sendRequestWithUserRole(HttpMethod.GET, range(RECORDS_URL, USER_ID),
+                null, 2, null, jwtTokenSeededUser);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode(),
+                "Reason: people must be able to see the hours recorded against their own name");
+        assertFalse(readList(response, DataTimeDto.class).isEmpty(),
+                "Reason: the seeded employee has sessions inside the queried range");
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("an employee may not read another employee's sessions")
+    void sessionsForOtherUserAsUserTest() {
+        ResponseEntity<String> response = sendRequestWithUserRole(HttpMethod.GET, range(RECORDS_URL, OTHER_USER_ID),
+                null, 2, null, jwtTokenSeededUser);
+
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode(),
+                "Reason: self-service must not become a way to read a colleague's attendance");
+        assertEquals(ACCESS_DENIED, errorMessage(response));
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("an employee may check their own incomplete sessions")
+    void checkForSelfAsUserTest() {
+        ResponseEntity<String> response = sendRequestWithUserRole(HttpMethod.GET,
+                String.format(CHECK_URL, 2, USER_ID) + "?startDate=" + RANGE_START + "&endDate=" + RANGE_END,
+                null, null, null, jwtTokenSeededUser);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode(),
+                "Reason: the session screen shows which of your own rows still need fixing");
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("an employee may record and then read back their own leave days, most recent first")
+    void leaveDaysForSelfAsUserTest() {
+        List<LeaveDayEntryDto> days = List.of(
+                generateLeaveDayEntryDto(LocalDate.parse("2024-01-08"), 1.0, null),
+                generateLeaveDayEntryDto(LocalDate.parse("2024-01-22"), null, 0.5));
+        ResponseEntity<String> added = sendRequestWithUserRole(HttpMethod.POST, ADD_LEAVE_DAYS_URL, USER_ID, 2,
+                generateLeaveReportRequestDto(days), jwtTokenSeededUser);
+        assertEquals(HttpStatus.OK, added.getStatusCode(),
+                "Reason: people record their own holiday and sick leave, not only administrators");
+
+        ResponseEntity<String> response = sendRequestWithUserRole(HttpMethod.GET,
+                String.format(LEAVE_DAYS_URL, 2, USER_ID) + "?startDate=" + RANGE_START + "&endDate=" + RANGE_END,
+                null, null, null, jwtTokenSeededUser);
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+
+        List<LeaveDayDto> body = readList(response, LeaveDayDto.class);
+        assertEquals(2, body.size(), "Reason: both recorded days fall inside the queried range");
+        assertEquals(LocalDate.parse("2024-01-22"), body.get(0).getDate(),
+                "Reason: the most recent leave day must come first");
+        assertEquals(LocalDate.parse("2024-01-08"), body.get(1).getDate());
+        assertEquals(LeaveDayDto.LeaveTypeEnum.SICK, body.get(0).getLeaveType());
+        assertEquals(0.5, body.get(0).getAmount());
+        assertEquals(LeaveDayDto.LeaveTypeEnum.VACATION, body.get(1).getLeaveType());
+        assertEquals(1.0, body.get(1).getAmount());
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("an employee may not read another employee's leave days")
+    void leaveDaysForOtherUserAsUserTest() {
+        ResponseEntity<String> response = sendRequestWithUserRole(HttpMethod.GET,
+                String.format(LEAVE_DAYS_URL, 2, OTHER_USER_ID) + "?startDate=" + RANGE_START + "&endDate=" + RANGE_END,
+                null, null, null, jwtTokenSeededUser);
+
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode(),
+                "Reason: leave is personal; reading a colleague's stays with administrators");
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("GET leave days returns an empty list when none were recorded in the range")
+    void leaveDaysEmptyRangeTest() {
+        ResponseEntity<String> response = sendRequestWithAdmin(HttpMethod.GET,
+                String.format(LEAVE_DAYS_URL, 2, USER_ID) + "?startDate=2030-01-01&endDate=2030-01-31",
+                null, 2, null);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertTrue(readList(response, LeaveDayDto.class).isEmpty(),
+                "Reason: an empty range is not an error, it is simply no leave");
     }
 }

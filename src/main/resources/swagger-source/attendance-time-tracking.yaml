@@ -435,6 +435,58 @@ paths:
         '500':
           $ref: '#/responses/500-InternalServerError'
 
+  /attendance/leaveDays/tenant/{tenantId}/userId/{idUser}:
+    get:
+      summary: Retrieves the leave days recorded for a user within a date range
+      operationId: getLeaveDays
+      tags:
+        - Time Tracking
+      parameters:
+        - name: tenantId
+          in: path
+          description: |
+            Unique identifier of the tenant
+          required: true
+          type: integer
+          format: int32
+        - name: idUser
+          in: path
+          description: |
+            Unique identifier of the user
+          required: true
+          type: integer
+          format: int32
+        - name: startDate
+          in: query
+          description: |
+            Start date of the range (ISO format YYYY-MM-DD)
+          required: true
+          type: string
+          format: date
+        - name: endDate
+          in: query
+          description: |
+            Finish date of the range (ISO format YYYY-MM-DD)
+          required: true
+          type: string
+          format: date
+      responses:
+        '200':
+          description: |
+            Leave days recorded in the range, most recent first
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/LeaveDayDto'
+        '400':
+          $ref: '#/responses/400-BadRequest'
+        '401':
+          $ref: '#/responses/401-Unauthorized'
+        '403':
+          $ref: '#/responses/403-Forbidden'
+        '500':
+          $ref: '#/responses/500-InternalServerError'
+
   /attendance/statistic/tenant/{tenantId}:
     post:
       summary: Computes and persists statistic by tenant id and query parameters
@@ -662,6 +714,39 @@ definitions:
         description: One entry per date
         items:
           $ref: '#/definitions/LeaveDayEntryDto'
+
+  LeaveDayDto:
+    type: object
+    description: |
+      A leave day recorded for a user
+    properties:
+      userId:
+        description: |
+          Unique identifier of the user
+        type: integer
+        format: int32
+      tenantId:
+        description: |
+          Unique identifier of the tenant
+        type: integer
+        format: int32
+      date:
+        description: |
+          Date the leave was taken (ISO format YYYY-MM-DD)
+        type: string
+        format: date
+      leaveType:
+        description: |
+          Kind of leave recorded for the date
+        type: string
+        enum:
+          - VACATION
+          - SICK
+      amount:
+        description: |
+          Portion of the day taken as leave: 1.0 for a full day, 0.5 for half
+        type: number
+        format: double
 
   LeaveDayEntryDto:
     type: object

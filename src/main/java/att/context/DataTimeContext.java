@@ -10,6 +10,7 @@ import java.util.function.Consumer;
 
 import att.dto.DataTimeDto;
 import att.dto.EditDataTimeUserDto;
+import att.dto.LeaveDayDto;
 import att.model.DataTime;
 import att.model.LeaveDay;
 import lombok.AllArgsConstructor;
@@ -55,6 +56,8 @@ public class DataTimeContext<T> implements BusinessStrategyContext {
 
     @Builder.Default
     private List<DataTimeDto> responseDataTimeDto = new ArrayList<>();
+    @Builder.Default
+    private List<LeaveDayDto> responseLeaveDayDto = new ArrayList<>();
     @Builder.Default
     private StatisticInfoHolder statisticInfoHolder = new StatisticInfoHolder();
 

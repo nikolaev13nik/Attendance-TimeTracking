@@ -62,8 +62,8 @@ public abstract class DataTimeServiceBase<R> implements BaseService<R> {
         context.setResponseDataTimeDto(sessionRecordMapper.toDtoList(context.getUserWorkSessionList()));
     }
 
-    protected DataTime findRecordOrThrow(Integer id) {
-        return timeRepository.findById(id).orElseThrow(
+    protected DataTime findRecordOrThrow(Integer id, Integer tenantId) {
+        return timeRepository.findByIdAndTenantId(id, tenantId).orElseThrow(
                 () -> new NotFoundException(String.format(ErrorConstants.ATTENDANCE_NOT_FOUND_MSG, id)));
     }
 }

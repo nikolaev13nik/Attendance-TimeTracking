@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 import att.model.DataTime;
 
@@ -18,11 +19,16 @@ public interface SessionAttendanceTimeRepository extends JpaRepository<DataTime,
     List<DataTime> findByTenantIdAndIdUserAndWorkDateOrderByIdDesc(Integer tenantId, Integer idUser,
                                                                    LocalDate workDate);
 
-    Long countByTenantIdAndIdUserAndWorkDateBetween(
-            Integer tenantId,
-            Integer userId,
-            LocalDate startDate,
-            LocalDate endDate);
+    Optional<DataTime> findByIdAndTenantId(Integer id, Integer tenantId);
+
+    @Query(value = "SELECT COUNT(DISTINCT work_date) FROM att_work_sessions " +
+            "WHERE tenant_id = :tenantId " +
+            "AND user_id = :userId " +
+            "AND work_date BETWEEN :startDate AND :endDate",
+            nativeQuery = true)
+    Long countWorkedDaysBetween(@Param("tenantId") Integer tenantId,
+                                @Param("userId") Integer userId, @Param("startDate") LocalDate startDate,
+                                @Param("endDate") LocalDate endDate);
 
 
     @Query(value = "SELECT * FROM att_work_sessions WHERE tenant_id = :tenantId AND user_id = :userId " +
