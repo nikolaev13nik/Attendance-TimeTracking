@@ -22,17 +22,22 @@ import att.dto.MonthlyUserStatisticInfoDto;
 import att.dto.SessionDataDto;
 import att.model.DataTime;
 import att.model.LeaveDay;
-import att.model.LeaveType;
 
 import static att.exceptions.ErrorConstants.ATTENDANCE_NOT_FOUND_MSG;
 import static att.exceptions.ErrorConstants.FUTURE_WORK_DATE_MSG;
 import static att.exceptions.ErrorConstants.INCOMPLETE_SESSIONS_MSG;
 import static att.exceptions.ErrorConstants.LEAVE_DAY_AMOUNT_EXCEEDS_FULL_DAY_MSG;
+import static att.exceptions.ErrorConstants.LEAVE_DAY_DATE_ALREADY_RECORDED_MSG;
+import static att.exceptions.ErrorConstants.LEAVE_DAY_EMPTY_MSG;
+import static att.exceptions.ErrorConstants.LEAVE_DAY_NOTHING_REPORTED_MSG;
+import static att.exceptions.ErrorConstants.LEAVE_DAY_NOT_FOUND_MSG;
 import static att.exceptions.ErrorConstants.OPEN_CLOSE_DATE_MISSING_MSG;
 import static att.exceptions.ErrorConstants.PREVIOUS_DAY_REQUIRES_ADMIN_MSG;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.verifyNoInteractions;
 
@@ -483,23 +488,23 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
         List<LeaveDayEntryDto> days = List.of(
                 generateLeaveDayEntryDto(LocalDate.parse("2024-01-15"), 1.0, null),
                 generateLeaveDayEntryDto(LocalDate.parse("2024-01-16"), 0.5, 0.5),
-                generateLeaveDayEntryDto(LocalDate.parse("2024-01-17"), null, null),
                 generateLeaveDayEntryDto(LocalDate.parse("2024-01-20"), null, 1.0));
         LeaveReportRequestDto task = generateLeaveReportRequestDto(days);
 
         ResponseEntity<String> response = sendRequestWithAdmin(HttpMethod.POST, ADD_LEAVE_DAYS_URL, USER_ID, 2, task);
         assertEquals(HttpStatus.OK, response.getStatusCode());
 
-        List<LeaveDay> saved = leaveDaysRepository.findByLeaveDayKeyTenantIdAndLeaveDayKeyIdUser(2, USER_ID);
-        assertEquals(4, saved.size());
-        assertTrue(saved.stream().anyMatch(d -> d.getLeaveDayKey().getLeaveDate().equals(LocalDate.parse("2024-01-15"))
-                && d.getLeaveDayKey().getLeaveType() == LeaveType.VACATION && d.getAmount() == 1.0));
-        assertTrue(saved.stream().anyMatch(d -> d.getLeaveDayKey().getLeaveDate().equals(LocalDate.parse("2024-01-16"))
-                && d.getLeaveDayKey().getLeaveType() == LeaveType.VACATION && d.getAmount() == 0.5));
-        assertTrue(saved.stream().anyMatch(d -> d.getLeaveDayKey().getLeaveDate().equals(LocalDate.parse("2024-01-16"))
-                && d.getLeaveDayKey().getLeaveType() == LeaveType.SICK && d.getAmount() == 0.5));
-        assertTrue(saved.stream().anyMatch(d -> d.getLeaveDayKey().getLeaveDate().equals(LocalDate.parse("2024-01-20"))
-                && d.getLeaveDayKey().getLeaveType() == LeaveType.SICK && d.getAmount() == 1.0));
+        List<LeaveDay> saved = leaveDaysRepository.findByTenantIdAndIdUser(2, USER_ID).stream()
+                .filter(d -> d.getLeaveDate().getMonthValue() == 1)
+                .toList();
+        assertEquals(3, saved.size(), "Reason: one row per reported date");
+        assertTrue(saved.stream().anyMatch(d -> d.getLeaveDate().equals(LocalDate.parse("2024-01-15"))
+                && d.getVacationAmount() == 1.0 && d.getSickAmount() == null));
+        assertTrue(saved.stream().anyMatch(d -> d.getLeaveDate().equals(LocalDate.parse("2024-01-16"))
+                        && d.getVacationAmount() == 0.5 && d.getSickAmount() == 0.5),
+                "Reason: half vacation plus half sick share a single row for the date");
+        assertTrue(saved.stream().anyMatch(d -> d.getLeaveDate().equals(LocalDate.parse("2024-01-20"))
+                && d.getVacationAmount() == null && d.getSickAmount() == 1.0));
 
         // negative case
         LocalDate reportDate = LocalDate.parse(
@@ -847,10 +852,11 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
         assertEquals(LocalDate.parse("2024-01-22"), body.get(0).getDate(),
                 "Reason: the most recent leave day must come first");
         assertEquals(LocalDate.parse("2024-01-08"), body.get(1).getDate());
-        assertEquals(LeaveDayDto.LeaveTypeEnum.SICK, body.get(0).getLeaveType());
-        assertEquals(0.5, body.get(0).getAmount());
-        assertEquals(LeaveDayDto.LeaveTypeEnum.VACATION, body.get(1).getLeaveType());
-        assertEquals(1.0, body.get(1).getAmount());
+        assertNotNull(body.get(0).getId(), "Reason: the id is what the edit and remove endpoints address");
+        assertEquals(0.5, body.get(0).getSickAmount());
+        assertNull(body.get(0).getVacationAmount(), "Reason: no vacation was recorded for that date");
+        assertEquals(1.0, body.get(1).getVacationAmount());
+        assertNull(body.get(1).getSickAmount(), "Reason: no sick leave was recorded for that date");
     }
 
     @Test
@@ -876,5 +882,239 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertTrue(readList(response, LeaveDayDto.class).isEmpty(),
                 "Reason: an empty range is not an error, it is simply no leave");
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("edit leave day , admin changes both portions of an existing record - positive")
+    void editLeaveDayAsAdminTest() {
+        long recordCountBefore = leaveDaysRepository.count();
+
+        ResponseEntity<String> response = sendRequestWithAdmin(HttpMethod.POST, LEAVE_DAY_CHANGE_URL, null, 2,
+                createEditLeaveDayDto(SEEDED_LEAVE_SPLIT_ID, null, 1.0, 0.0));
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+
+        LeaveDayDto body = readObject(response, LeaveDayDto.class);
+        assertEquals(SEEDED_LEAVE_SPLIT_ID, body.getId(),
+                "Reason: the response must describe the record that was edited");
+        assertEquals(1.0, body.getVacationAmount(), "Reason: the new vacation portion must come back");
+        assertNull(body.getSickAmount(), "Reason: a portion set to zero is cleared, not stored as zero");
+
+        // db state validations
+        verifyLeaveDayDbState(SEEDED_LEAVE_SPLIT_ID, LocalDate.parse(SEEDED_LEAVE_SPLIT_DAY), 1.0, null);
+        assertEquals(recordCountBefore, leaveDaysRepository.count(),
+                String.format("Reason: an edit must not change the total count of leave days ,expected:%s ,exist:%s",
+                        recordCountBefore, leaveDaysRepository.count()));
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("edit leave day , admin moves a record to a free date - positive")
+    void editLeaveDayMovesDateTest() {
+        ResponseEntity<String> response = sendRequestWithAdmin(HttpMethod.POST, LEAVE_DAY_CHANGE_URL, null, 2,
+                createEditLeaveDayDto(SEEDED_LEAVE_VACATION_ID, LocalDate.parse(SEEDED_LEAVE_FREE_DAY), null, null));
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+
+        LeaveDayDto body = readObject(response, LeaveDayDto.class);
+        assertEquals(LocalDate.parse(SEEDED_LEAVE_FREE_DAY), body.getDate(),
+                "Reason: the record must have moved to the requested date");
+        assertEquals(1.0, body.getVacationAmount(),
+                "Reason: portions left out of the request keep their stored value");
+
+        // db state validations
+        verifyLeaveDayDbState(SEEDED_LEAVE_VACATION_ID, LocalDate.parse(SEEDED_LEAVE_FREE_DAY), 1.0, null);
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("edit leave day , unknown id - negative")
+    void editLeaveDayMissingTest() {
+        int missingId = 999999;
+        ResponseEntity<String> response = sendRequestWithAdmin(HttpMethod.POST, LEAVE_DAY_CHANGE_URL, null, 2,
+                createEditLeaveDayDto(missingId, null, 1.0, null));
+
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+        assertEquals(String.format(LEAVE_DAY_NOT_FOUND_MSG, missingId), errorMessage(response));
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("edit leave day , a record owned by another tenant - negative")
+    void editLeaveDayOtherTenantTest() {
+        ResponseEntity<String> response = sendRequestWithAdmin(HttpMethod.POST, LEAVE_DAY_CHANGE_URL, null, 2,
+                createEditLeaveDayDto(SEEDED_LEAVE_OTHER_TENANT_ID, null, 0.5, null));
+
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode(),
+                "Reason: a record belonging to another tenant must not be reachable");
+        assertEquals(String.format(LEAVE_DAY_NOT_FOUND_MSG, SEEDED_LEAVE_OTHER_TENANT_ID), errorMessage(response));
+        verifyLeaveDayDbState(SEEDED_LEAVE_OTHER_TENANT_ID, LocalDate.parse("2024-03-07"), 1.0, null);
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("edit leave day , portions exceeding a full day - negative")
+    void editLeaveDayExceedsFullDayTest() {
+        ResponseEntity<String> response = sendRequestWithAdmin(HttpMethod.POST, LEAVE_DAY_CHANGE_URL, null, 2,
+                createEditLeaveDayDto(SEEDED_LEAVE_SPLIT_ID, null, 1.0, null));
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode(),
+                "Reason: raising vacation to a full day on top of the stored half sick day overflows the date");
+        assertEquals(String.format(LEAVE_DAY_AMOUNT_EXCEEDS_FULL_DAY_MSG, SEEDED_LEAVE_SPLIT_DAY, 1.0, 0.5),
+                errorMessage(response));
+        verifyLeaveDayDbState(SEEDED_LEAVE_SPLIT_ID, LocalDate.parse(SEEDED_LEAVE_SPLIT_DAY), 0.5, 0.5);
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("edit leave day , clearing both portions - negative")
+    void editLeaveDayLeftEmptyTest() {
+        ResponseEntity<String> response = sendRequestWithAdmin(HttpMethod.POST, LEAVE_DAY_CHANGE_URL, null, 2,
+                createEditLeaveDayDto(SEEDED_LEAVE_SPLIT_ID, null, 0.0, 0.0));
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode(),
+                "Reason: a record with no leave left on it is a removal, not an edit");
+        assertEquals(String.format(LEAVE_DAY_EMPTY_MSG, SEEDED_LEAVE_SPLIT_DAY), errorMessage(response));
+        verifyLeaveDayDbState(SEEDED_LEAVE_SPLIT_ID, LocalDate.parse(SEEDED_LEAVE_SPLIT_DAY), 0.5, 0.5);
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("edit leave day , moving onto an already recorded date - negative")
+    void editLeaveDayOntoRecordedDateTest() {
+        ResponseEntity<String> response = sendRequestWithAdmin(HttpMethod.POST, LEAVE_DAY_CHANGE_URL, null, 2,
+                createEditLeaveDayDto(SEEDED_LEAVE_VACATION_ID, LocalDate.parse(SEEDED_LEAVE_SICK_DAY), null, null));
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode(),
+                "Reason: one record per date, so the clash is reported instead of breaking the unique constraint");
+        assertEquals(String.format(LEAVE_DAY_DATE_ALREADY_RECORDED_MSG, SEEDED_LEAVE_SICK_DAY, USER_ID),
+                errorMessage(response));
+        verifyLeaveDayDbState(SEEDED_LEAVE_VACATION_ID, LocalDate.parse(SEEDED_LEAVE_VACATION_DAY), 1.0, null);
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("remove leave day , admin removes an existing record - positive")
+    void removeLeaveDayAsAdminTest() {
+        long recordCountBefore = leaveDaysRepository.count();
+
+        ResponseEntity<String> response = sendDeleteRequestWithAdmin(HttpMethod.DELETE, LEAVE_DAY_REMOVE_URL,
+                SEEDED_LEAVE_SICK_ID, 2, null);
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+
+        LeaveDayDto body = readObject(response, LeaveDayDto.class);
+        assertEquals(SEEDED_LEAVE_SICK_ID, body.getId(),
+                "Reason: the removed record must come back so the caller can report what went");
+        assertEquals(1.0, body.getSickAmount());
+
+        // db state validations
+        assertTrue(leaveDaysRepository.findById(SEEDED_LEAVE_SICK_ID).isEmpty(),
+                "Reason: the record must be gone from the database");
+        assertEquals(recordCountBefore - 1, leaveDaysRepository.count(),
+                String.format("Reason: exactly one leave day should have been removed ,expected:%s ,exist:%s",
+                        recordCountBefore - 1, leaveDaysRepository.count()));
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("remove leave day , unknown id - negative")
+    void removeLeaveDayMissingTest() {
+        int missingId = 999999;
+        long recordCountBefore = leaveDaysRepository.count();
+
+        ResponseEntity<String> response = sendDeleteRequestWithAdmin(HttpMethod.DELETE, LEAVE_DAY_REMOVE_URL,
+                missingId, 2, null);
+
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+        assertEquals(String.format(LEAVE_DAY_NOT_FOUND_MSG, missingId), errorMessage(response));
+        assertEquals(recordCountBefore, leaveDaysRepository.count(),
+                "Reason: nothing should be removed when the record does not exist");
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("remove leave day , a record owned by another tenant - negative")
+    void removeLeaveDayOtherTenantTest() {
+        ResponseEntity<String> response = sendDeleteRequestWithAdmin(HttpMethod.DELETE, LEAVE_DAY_REMOVE_URL,
+                SEEDED_LEAVE_OTHER_TENANT_ID, 2, null);
+
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode(),
+                "Reason: a record belonging to another tenant must not be removable");
+        assertEquals(String.format(LEAVE_DAY_NOT_FOUND_MSG, SEEDED_LEAVE_OTHER_TENANT_ID), errorMessage(response));
+        assertTrue(leaveDaysRepository.findById(SEEDED_LEAVE_OTHER_TENANT_ID).isPresent(),
+                "Reason: the other tenant's record must survive untouched");
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("add leave days , reporting the same date twice updates the record rather than duplicating it")
+    void addLeaveDaysSameDateTwiceTest() {
+        LocalDate day = LocalDate.parse("2024-01-15");
+        long recordCountBefore = leaveDaysRepository.count();
+
+        ResponseEntity<String> first = sendRequestWithAdmin(HttpMethod.POST, ADD_LEAVE_DAYS_URL, USER_ID, 2,
+                generateLeaveReportRequestDto(List.of(generateLeaveDayEntryDto(day, 0.5, null))));
+        assertEquals(HttpStatus.OK, first.getStatusCode());
+        assertEquals(recordCountBefore + 1, leaveDaysRepository.count(),
+                "Reason: the first report of a date creates its record");
+
+        ResponseEntity<String> second = sendRequestWithAdmin(HttpMethod.POST, ADD_LEAVE_DAYS_URL, USER_ID, 2,
+                generateLeaveReportRequestDto(List.of(generateLeaveDayEntryDto(day, null, 0.5))));
+        assertEquals(HttpStatus.OK, second.getStatusCode());
+        assertEquals(recordCountBefore + 1, leaveDaysRepository.count(),
+                "Reason: reporting the same date again updates the existing record instead of adding one");
+
+        LeaveDay stored = leaveDaysRepository.findByTenantIdAndIdUserAndLeaveDate(2, USER_ID, day).orElseThrow();
+        assertEquals(0.5, stored.getVacationAmount(),
+                "Reason: a portion the second report left out must keep its stored value");
+        assertEquals(0.5, stored.getSickAmount(), "Reason: the second report's portion must be stored");
+
+        ResponseEntity<String> third = sendRequestWithAdmin(HttpMethod.POST, ADD_LEAVE_DAYS_URL, USER_ID, 2,
+                generateLeaveReportRequestDto(List.of(generateLeaveDayEntryDto(day, 1.0, null))));
+        assertEquals(HttpStatus.BAD_REQUEST, third.getStatusCode(),
+                "Reason: the full-day rule is applied to the resulting record, not only to the incoming entry");
+        assertEquals(String.format(LEAVE_DAY_AMOUNT_EXCEEDS_FULL_DAY_MSG, day, 1.0, 0.5), errorMessage(third));
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("add leave days , an entry reporting neither vacation nor sick time - negative")
+    void addLeaveDaysNothingReportedTest() {
+        long recordCountBefore = leaveDaysRepository.count();
+        LocalDate freeDay = LocalDate.parse("2024-01-17");
+
+        ResponseEntity<String> absent = sendRequestWithAdmin(HttpMethod.POST, ADD_LEAVE_DAYS_URL, USER_ID, 2,
+                generateLeaveReportRequestDto(List.of(generateLeaveDayEntryDto(freeDay, null, null))));
+        assertEquals(HttpStatus.BAD_REQUEST, absent.getStatusCode(),
+                "Reason: a leave day has to report something, so omitting both portions is refused");
+        assertEquals(String.format(LEAVE_DAY_NOTHING_REPORTED_MSG, freeDay), errorMessage(absent));
+
+        ResponseEntity<String> zeroed = sendRequestWithAdmin(HttpMethod.POST, ADD_LEAVE_DAYS_URL, USER_ID, 2,
+                generateLeaveReportRequestDto(List.of(generateLeaveDayEntryDto(freeDay, 0.0, 0.0))));
+        assertEquals(HttpStatus.BAD_REQUEST, zeroed.getStatusCode(),
+                "Reason: zero for both portions reports nothing just as omitting them does");
+        assertEquals(String.format(LEAVE_DAY_NOTHING_REPORTED_MSG, freeDay), errorMessage(zeroed));
+
+        // db state validations
+        assertEquals(recordCountBefore, leaveDaysRepository.count(),
+                "Reason: a refused report must not create any leave day");
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("add leave days , a refused entry leaves an already stored record for that date untouched")
+    void addLeaveDaysNothingReportedKeepsStoredRecordTest() {
+        long recordCountBefore = leaveDaysRepository.count();
+        LocalDate day = LocalDate.parse(SEEDED_LEAVE_SPLIT_DAY);
+
+        ResponseEntity<String> response = sendRequestWithAdmin(HttpMethod.POST, ADD_LEAVE_DAYS_URL, USER_ID, 2,
+                generateLeaveReportRequestDto(List.of(generateLeaveDayEntryDto(day, 0.0, 0.0))));
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode(),
+                "Reason: reporting nothing is refused rather than treated as a removal");
+        assertEquals(String.format(LEAVE_DAY_NOTHING_REPORTED_MSG, day), errorMessage(response));
+
+        // db state validations
+        verifyLeaveDayDbState(SEEDED_LEAVE_SPLIT_ID, day, 0.5, 0.5);
+        assertEquals(recordCountBefore, leaveDaysRepository.count(),
+                "Reason: removing a leave day is leaveDayRemove's job, never a side effect of a report");
     }
 }

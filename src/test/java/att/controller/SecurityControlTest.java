@@ -14,6 +14,7 @@ import java.util.List;
 import att.dto.LeaveReportRequestDto;
 import att.dto.SessionDataDto;
 import att.model.DataTime;
+import att.model.LeaveDay;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -229,6 +230,42 @@ public class SecurityControlTest extends BaseApiControllerTest {
         long countAfter = monthStatisticRepository.count();
         assertEquals(countBefore, countAfter,
                 "Reason: no statistic row should be persisted for a forbidden request");
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("POST /attendance/leaveDayChange as non-admin returns 403")
+    void editLeaveDayForbiddenTest() {
+        long countBefore = leaveDaysRepository.count();
+
+        ResponseEntity<String> response = sendRequestWithUserRole(HttpMethod.POST, LEAVE_DAY_CHANGE_URL,
+                null, 123, createEditLeaveDayDto(SEEDED_LEAVE_SPLIT_ID, null, 1.0, 0.0), jwtTokenUserTenant_123);
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+        assertEquals(ACCESS_DENIED, errorMessage(response));
+
+        LeaveDay untouched = findLeaveDayOrFail(SEEDED_LEAVE_SPLIT_ID);
+        assertEquals(0.5, untouched.getVacationAmount(),
+                "Reason: correcting leave stays with administrators, so the record must be unchanged");
+        assertEquals(0.5, untouched.getSickAmount(),
+                "Reason: correcting leave stays with administrators, so the record must be unchanged");
+        assertEquals(countBefore, leaveDaysRepository.count(),
+                "Reason: no leave day rows should be added or removed by a forbidden request");
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("DELETE /attendance/leaveDayRemove/{id} as non-admin returns 403")
+    void removeLeaveDayForbiddenTest() {
+        long countBefore = leaveDaysRepository.count();
+
+        ResponseEntity<String> response = sendRequestWithUserRole(HttpMethod.DELETE, LEAVE_DAY_REMOVE_URL,
+                SEEDED_LEAVE_SICK_ID, 123, null, jwtTokenUserTenant_123);
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+        assertEquals(ACCESS_DENIED, errorMessage(response));
+        assertTrue(leaveDaysRepository.existsById(SEEDED_LEAVE_SICK_ID),
+                "Reason: removing leave stays with administrators, so the record must survive");
+        assertEquals(countBefore, leaveDaysRepository.count(),
+                "Reason: no leave day rows should be removed by a forbidden request");
     }
 
 }

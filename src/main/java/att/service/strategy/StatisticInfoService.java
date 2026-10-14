@@ -11,6 +11,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.Function;
 
 import att.client.accounting.api.AccountApi;
 import att.context.DataTimeContext;
@@ -19,11 +20,11 @@ import att.dto.MonthlyUserStatisticInfoDto;
 import att.exceptions.BadRequestException;
 import att.mapper.MonthStatisticMapper;
 import att.model.LeaveDay;
-import att.model.LeaveType;
 import att.model.MonthStatistic;
 import att.security.JwtClaimsResolver;
 
 import static att.exceptions.ErrorConstants.INCOMPLETE_SESSIONS_MSG;
+import static att.service.AttUtility.amountOrZero;
 import static org.hibernate.internal.util.collections.CollectionHelper.isNotEmpty;
 
 @Service
@@ -47,7 +48,7 @@ public class StatisticInfoService extends BaseGetService<Void> {
     protected void fetch(DataTimeContext<Void> context) {
         YearMonth targetMonth = YearMonth.from(context.getStatisticInfoHolder().getStartOfMonth());
         LocalDate monthStart = targetMonth.atDay(1);
-        LocalDate monthEnd = targetMonth.atEndOfMonth(); //todo: change to local date in controller ?
+        LocalDate monthEnd = targetMonth.atEndOfMonth();
         context.setStartDate(monthStart);
         context.setEndDate(monthEnd);
         context.getStatisticInfoHolder().setTargetUserIds(resolveTargetUserIds(context));
@@ -108,12 +109,6 @@ public class StatisticInfoService extends BaseGetService<Void> {
         return userIds;
     }
 
-    /**
-     * Resolves the caller the report was requested by (the JWT {@code sub}) against Attendance-Accounting, so the
-     * events published afterwards carry a name and an email to notify. Only the report flow needs it, and the caller
-     * is the same for every target user, so Accounting is called at most once per request. A failure propagates: the
-     * pipeline is transactional, so nothing is persisted and nothing is published.
-     */
     private void resolveReportRequester(DataTimeContext<Void> context) {
         StatisticInfoHolder holder = context.getStatisticInfoHolder();
         if (Boolean.TRUE.equals(holder.getReport()) && holder.getReportRequester() == null) {
@@ -123,17 +118,15 @@ public class StatisticInfoService extends BaseGetService<Void> {
     }
 
     private void populateLeaveDayTotals(DataTimeContext<Void> context, Integer userId) {
-        List<LeaveDay> leaveDays = leaveDaysRepository
-                .findByLeaveDayKeyTenantIdAndLeaveDayKeyIdUserAndLeaveDayKeyLeaveDateBetween(
-                        context.getTenantId(), userId, context.getStartDate(), context.getEndDate());
-        context.getVacationPerUser().put(userId, sumLeaveDays(leaveDays, LeaveType.VACATION));
-        context.getSickDayPerUser().put(userId, sumLeaveDays(leaveDays, LeaveType.SICK));
+        List<LeaveDay> leaveDays = leaveDaysRepository.findByTenantIdAndIdUserAndLeaveDateBetween(
+                context.getTenantId(), userId, context.getStartDate(), context.getEndDate());
+        context.getVacationPerUser().put(userId, sumLeaveDays(leaveDays, LeaveDay::getVacationAmount));
+        context.getSickDayPerUser().put(userId, sumLeaveDays(leaveDays, LeaveDay::getSickAmount));
     }
 
-    private double sumLeaveDays(List<LeaveDay> leaveDays, LeaveType type) {
+    private double sumLeaveDays(List<LeaveDay> leaveDays, Function<LeaveDay, Double> portion) {
         return leaveDays.stream()
-                .filter(day -> day.getLeaveDayKey().getLeaveType() == type)
-                .mapToDouble(LeaveDay::getAmount)
+                .mapToDouble(day -> amountOrZero(portion.apply(day)))
                 .sum();
     }
 }

@@ -28,12 +28,14 @@ import att.dao.MonthStatisticRepository;
 import att.dao.SessionAttendanceTimeRepository;
 import att.dto.DataTimeDto;
 import att.dto.EditDataTimeUserDto;
+import att.dto.EditLeaveDayDto;
 import att.dto.LeaveDayEntryDto;
 import att.dto.LeaveReportRequestDto;
 import att.dto.MonthlyUserStatisticInfoDto;
 import att.dto.SessionDataDto;
 import att.messaging.producer.StatisticEventProducer;
 import att.model.DataTime;
+import att.model.LeaveDay;
 import att.model.MonthStatistic;
 import att.model.MonthStatisticKey;
 import tools.jackson.databind.JsonNode;
@@ -76,6 +78,9 @@ public abstract class BaseApiControllerTest {
     protected static final String REMOVE_URL = BASE_SUFFIX_URL + "/sessionRemove" + TENANT_ID_URL + "/session/%s";
     protected static final String ADD_LEAVE_DAYS_URL = BASE_SUFFIX_URL + "/addLeaveDays/tenant/%s/userId/%s";
     protected static final String LEAVE_DAYS_URL = BASE_SUFFIX_URL + "/leaveDays/tenant/%s/userId/%s";
+    protected static final String LEAVE_DAY_CHANGE_URL = BASE_SUFFIX_URL + "/leaveDayChange" + TENANT_ID_URL;
+    protected static final String LEAVE_DAY_REMOVE_URL =
+            BASE_SUFFIX_URL + "/leaveDayRemove" + TENANT_ID_URL + "/leaveDay/%s";
     protected static final String STATISTIC_URL = BASE_SUFFIX_URL + "/statistic" + TENANT_ID_URL;
 
     protected static final Integer SEEDED_STAT_USER_ID = 7;
@@ -96,6 +101,21 @@ public abstract class BaseApiControllerTest {
     protected static final int SEEDED_TODAY_OPEN_ID = 1005;
     protected static final int SEEDED_FINISHED_ID = 1002;
     protected static final int SEEDED_OPEN_ID = 1003;
+
+    /**
+     * Leave-day fixtures from {@code V4__att_user_leave_days_setup.sql}: a vacation-only day, a
+     * half-and-half day and a sick-only day for the seeded employee, plus one row owned by tenant 1.
+     */
+    protected static final int SEEDED_LEAVE_VACATION_ID = 2001;
+    protected static final int SEEDED_LEAVE_SPLIT_ID = 2002;
+    protected static final int SEEDED_LEAVE_SICK_ID = 2003;
+    protected static final int SEEDED_LEAVE_OTHER_TENANT_ID = 2004;
+    protected static final String SEEDED_LEAVE_VACATION_DAY = "2024-03-04";
+    protected static final String SEEDED_LEAVE_SPLIT_DAY = "2024-03-05";
+    protected static final String SEEDED_LEAVE_SICK_DAY = "2024-03-06";
+    protected static final String SEEDED_LEAVE_FREE_DAY = "2024-03-20";
+    protected static final String LEAVE_RANGE_START = "2024-03-01";
+    protected static final String LEAVE_RANGE_END = "2024-03-31";
     protected static final Integer SEEDED_STAT_OTHER_USER_ID = 8;
     protected static final int SEEDED_STAT_OTHER_TENANT_ID = 3;
     protected static final String SEEDED_STAT_TARGET_MONTH = "2024-01";
@@ -350,5 +370,35 @@ public abstract class BaseApiControllerTest {
 
     protected LeaveReportRequestDto generateLeaveReportRequestDto(List<LeaveDayEntryDto> days) {
         return LeaveReportRequestDto.builder().days(days).build();
+    }
+
+    protected EditLeaveDayDto createEditLeaveDayDto(Integer id, LocalDate date, Double vacationAmount,
+                                                    Double sickAmount) {
+        return EditLeaveDayDto.builder()
+                .id(id)
+                .date(date)
+                .vacationAmount(vacationAmount)
+                .sickAmount(sickAmount)
+                .build();
+    }
+
+    protected LeaveDay findLeaveDayOrFail(Integer id) {
+        return leaveDaysRepository.findById(id).orElseThrow(
+                () -> new AssertionError(String.format("Reason: expected a leave day with id:%s to exist", id)));
+    }
+
+    protected void verifyLeaveDayDbState(Integer id, LocalDate expectedDate, Double expectedVacation,
+                                         Double expectedSick) {
+        LeaveDay stored = findLeaveDayOrFail(id);
+        assertEquals(expectedDate, stored.getLeaveDate(),
+                "Reason: the stored date must match what the edit asked for");
+        assertEquals(expectedVacation, stored.getVacationAmount(),
+                "Reason: the stored vacation portion must match what the edit asked for");
+        assertEquals(expectedSick, stored.getSickAmount(),
+                "Reason: the stored sick portion must match what the edit asked for");
+    }
+
+    protected String leaveRange(String base) {
+        return base + "?startDate=" + LEAVE_RANGE_START + "&endDate=" + LEAVE_RANGE_END;
     }
 }

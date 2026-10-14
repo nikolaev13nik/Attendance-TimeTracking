@@ -139,6 +139,42 @@ paths:
         '500':
           $ref: '#/responses/500-InternalServerError'
 
+  /attendance/leaveDayChange/tenant/{tenantId}:
+    post:
+      summary: Edits an existing leave-day record
+      operationId: editLeaveDay
+      tags:
+        - Time Tracking
+      parameters:
+        - name: tenantId
+          in: path
+          description: |
+            Unique identifier of the tenant
+          required: true
+          type: integer
+          format: int32
+        - name: EditLeaveDayDto
+          in: body
+          description: |
+            Details of the leave-day record to edit
+          required: true
+          schema:
+            $ref: '#/definitions/EditLeaveDayDto'
+      responses:
+        '200':
+          description: |
+            Updated leave day
+          schema:
+            $ref: '#/definitions/LeaveDayDto'
+        '400':
+          $ref: '#/responses/400-BadRequest'
+        '401':
+          $ref: '#/responses/401-Unauthorized'
+        '403':
+          $ref: '#/responses/403-Forbidden'
+        '500':
+          $ref: '#/responses/500-InternalServerError'
+
   /attendance/addLeaveDays/tenant/{tenantId}/userId/{idUser}:
     post:
       summary: Add leave days (vacation and sick days) for a user
@@ -573,6 +609,42 @@ paths:
         '500':
           $ref: '#/responses/500-InternalServerError'
 
+  /attendance/leaveDayRemove/tenant/{tenantId}/leaveDay/{id}:
+    delete:
+      summary: Removes a leave-day record
+      operationId: removeLeaveDay
+      tags:
+        - Time Tracking
+      parameters:
+        - name: id
+          in: path
+          description: |
+            Unique identifier of the leave day to remove
+          required: true
+          type: integer
+          format: int32
+        - name: tenantId
+          in: path
+          description: |
+            Unique identifier of the tenant
+          required: true
+          type: integer
+          format: int32
+      responses:
+        '200':
+          description: |
+            Removed leave day
+          schema:
+            $ref: '#/definitions/LeaveDayDto'
+        '400':
+          $ref: '#/responses/400-BadRequest'
+        '401':
+          $ref: '#/responses/401-Unauthorized'
+        '403':
+          $ref: '#/responses/403-Forbidden'
+        '500':
+          $ref: '#/responses/500-InternalServerError'
+
 
 definitions:
 
@@ -718,8 +790,14 @@ definitions:
   LeaveDayDto:
     type: object
     description: |
-      A leave day recorded for a user
+      The leave recorded for a user on a single date. One record per date, carrying the
+      vacation portion, the sick portion, or both (e.g. half+half)
     properties:
+      id:
+        description: |
+          Unique identifier of the leave-day record
+        type: integer
+        format: int32
       userId:
         description: |
           Unique identifier of the user
@@ -735,16 +813,41 @@ definitions:
           Date the leave was taken (ISO format YYYY-MM-DD)
         type: string
         format: date
-      leaveType:
+      vacationAmount:
         description: |
-          Kind of leave recorded for the date
+          Portion of the day taken as vacation: 1.0 for a full day, 0.5 for half, absent if none
+        type: number
+        format: double
+      sickAmount:
+        description: |
+          Portion of the day taken as sick leave: 1.0 for a full day, 0.5 for half, absent if none
+        type: number
+        format: double
+
+  EditLeaveDayDto:
+    type: object
+    description: |
+      Input for editing a leave-day record's date and/or portions. Only the properties
+      present are changed; the rest keep their stored value
+    properties:
+      id:
+        description: |
+          Unique identifier of the leave day to edit
+        type: integer
+        format: int32
+      date:
+        description: |
+          New date the leave was taken (ISO format YYYY-MM-DD)
         type: string
-        enum:
-          - VACATION
-          - SICK
-      amount:
+        format: date
+      vacationAmount:
         description: |
-          Portion of the day taken as leave: 1.0 for a full day, 0.5 for half
+          New vacation portion: 1.0 for a full day, 0.5 for half, 0 to clear
+        type: number
+        format: double
+      sickAmount:
+        description: |
+          New sick portion: 1.0 for a full day, 0.5 for half, 0 to clear
         type: number
         format: double
 

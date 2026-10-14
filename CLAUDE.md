@@ -192,16 +192,26 @@ that is not a member of the path tenant surfaces as a 500 `InternalApiException`
 
 - Entities (`att.model`) ↔ tables: `DataTime` → `att_work_sessions` (one row per open/close session),
   `MonthStatistic` (`@EmbeddedId MonthStatisticKey` = tenant + user + month start) → `att_month_statistic`,
-  `LeaveDay` (`@EmbeddedId LeaveDayKey` = tenant + user + date + `LeaveType` VACATION/SICK) →
-  `att_user_leave_days`.
+  `LeaveDay` → `att_user_leave_days` (surrogate `@Id` identity like `DataTime`, **one row per date**
+  carrying `vacationAmount` and `sickAmount`, with a unique constraint on tenant + user + date; a
+  `null` amount means that kind of leave was not taken). Because the identity is surrogate rather than
+  natural, `addLeaveDays` cannot rely on `saveAll` merging by key — `AddLeaveDaysService` looks the date
+  up explicitly and updates or inserts, and validates the **resulting** row against the
+  "vacation + sick ≤ 1 day" rule (`AttUtility.validateLeaveDayAmounts`).
 - Worked/overtime minutes are computed in SQL, not Java: see the native queries in
   `SessionAttendanceTimeRepository` (`calculateWorkedMinutes`, `calculateOvertimeMinutes` — overtime is
   minutes beyond 480/day, per day, summed). MapStruct mappers (`att.mapper`) do entity/DTO/event mapping.
 - Local/dev runs on a file-based H2 database (`spring.jpa.hibernate.ddl-auto=update`); tests run on an
   in-memory H2 database with schema/seed data applied via Flyway migrations in
   `src/test/resources/db.migration` (`V1__schema.sql`, `V2__att_work_sessions_setup.sql`,
-  `V3__att_month_statistic_setup.sql`). The `postgresql` dependency is present for production use but no
-  active Postgres datasource is configured in this repo.
+  `V3__att_month_statistic_setup.sql`, `V4__att_user_leave_days_setup.sql`). The `postgresql` dependency
+  is present for production use but no active Postgres datasource is configured in this repo.
+- **There is no production migration tool** — Flyway is `test`-scoped and those migrations are the test
+  schema only. Deployed environments (docker-compose, k8s) point the same `ddl-auto=update` at Postgres,
+  so Hibernate owns the live schema. It can add a column, but it cannot drop or replace a primary key,
+  drop a column, or backfill: a change of that kind has to be applied to the live database by hand before
+  the new image starts, and `helm/timetracking/values.yaml` sets `maxUnavailable: 0`, so old pods overlap
+  new ones during a roll. Plan such a release as a stop, change, deploy — not a rolling update.
 
 ### Known gaps (spec vs. current code — don't assume these exist)
 

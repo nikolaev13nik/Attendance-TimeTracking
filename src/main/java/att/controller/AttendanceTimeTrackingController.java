@@ -19,6 +19,7 @@ import att.context.AsyncMessageHandler;
 import att.context.DataTimeContext;
 import att.dto.DataTimeDto;
 import att.dto.EditDataTimeUserDto;
+import att.dto.EditLeaveDayDto;
 import att.dto.LeaveDayDto;
 import att.dto.LeaveReportRequestDto;
 import att.dto.MonthlyUserStatisticInfoDto;
@@ -31,6 +32,8 @@ import att.service.strategy.GetLeaveDaysService;
 import att.service.strategy.GetOvertimeMinutesBetweenService;
 import att.service.strategy.GetRecordsByRangeService;
 import att.service.strategy.GetWorkedMinutesBetweenService;
+import att.service.strategy.LeaveDayChangeService;
+import att.service.strategy.LeaveDayRemoveService;
 import att.service.strategy.OpenSessionService;
 import att.service.strategy.RemoveRecordService;
 import att.service.strategy.SessionChangeService;
@@ -53,6 +56,8 @@ public class AttendanceTimeTrackingController implements TimeTrackingApi {
     private final StatisticInfoService statisticInfoService;
     private final AddLeaveDaysService addLeaveDaysService;
     private final GetLeaveDaysService getLeaveDaysService;
+    private final LeaveDayChangeService leaveDayChangeService;
+    private final LeaveDayRemoveService leaveDayRemoveService;
     private final AsyncMessageHandler statisticAsyncMessageHandler;
 
     @PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name()) || #idUser.toString() == authentication.name")
@@ -187,6 +192,23 @@ public class AttendanceTimeTrackingController implements TimeTrackingApi {
                 DataTimeContext.<DataTimeDto>builder().recordId(id).tenantId(tenantId).build();
         removeRecordService.execute(context);
         return ResponseEntity.ok(context.getSingleResponseDataTimeDto());
+    }
+
+    @PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")
+    public ResponseEntity<LeaveDayDto> editLeaveDay(@PathVariable Integer tenantId,
+                                                    @RequestBody EditLeaveDayDto editLeaveDayDto) {
+        DataTimeContext<EditLeaveDayDto> context = DataTimeContext.<EditLeaveDayDto>builder()
+                .editLeaveDayDto(editLeaveDayDto).tenantId(tenantId).build();
+        leaveDayChangeService.execute(context);
+        return ResponseEntity.ok(context.getSingleResponseLeaveDayDto());
+    }
+
+    @PreAuthorize("hasRole(T(att.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")
+    public ResponseEntity<LeaveDayDto> removeLeaveDay(@PathVariable Integer tenantId, @PathVariable Integer id) {
+        DataTimeContext<LeaveDayDto> context =
+                DataTimeContext.<LeaveDayDto>builder().leaveDayId(id).tenantId(tenantId).build();
+        leaveDayRemoveService.execute(context);
+        return ResponseEntity.ok(context.getSingleResponseLeaveDayDto());
     }
 
 

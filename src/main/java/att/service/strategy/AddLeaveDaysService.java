@@ -3,18 +3,28 @@ package att.service.strategy;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.time.LocalDate;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
 
 import att.context.DataTimeContext;
+import att.dto.LeaveDayEntryDto;
 import att.dto.LeaveReportRequestDto;
 import att.mapper.LeaveDayMapper;
 import att.model.LeaveDay;
-import att.model.LeaveType;
 import att.service.base.DataTimeServiceBase;
 
-import static att.exceptions.ErrorConstants.LEAVE_DAY_AMOUNT_EXCEEDS_FULL_DAY_MSG;
-import static att.exceptions.ErrorProvider.leaveDayAmountExceedsFullDay;
+import static att.exceptions.ErrorConstants.LEAVE_DAY_DATE_DUPLICATED_MSG;
+import static att.exceptions.ErrorConstants.LEAVE_DAY_NOTHING_REPORTED_MSG;
+import static att.exceptions.ErrorProvider.leaveDayDateDuplicated;
+import static att.exceptions.ErrorProvider.leaveDayNothingReported;
+import static att.service.AttUtility.nullIfZero;
+import static att.service.AttUtility.validateLeaveDayAmounts;
+import static java.util.function.Function.identity;
+import static java.util.stream.Collectors.toMap;
+import static java.util.stream.Collectors.toSet;
 
 @Service
 public class AddLeaveDaysService extends DataTimeServiceBase<LeaveReportRequestDto> {
@@ -23,29 +33,56 @@ public class AddLeaveDaysService extends DataTimeServiceBase<LeaveReportRequestD
     private LeaveDayMapper leaveDayMapper;
 
     @Override
+    protected void fetch(DataTimeContext<LeaveReportRequestDto> context) {
+        context.setUserLeaveDaysByDate(leaveDaysRepository
+                .findByTenantIdAndIdUserAndLeaveDateIn(context.getTenantId(), context.getIdUser(),
+                        context.getTask().getDays().stream()
+                                .map(LeaveDayEntryDto::getDate)
+                                .collect(toSet()))
+                .stream()
+                .collect(toMap(LeaveDay::getLeaveDate, identity())));
+    }
+
+    @Override
     protected void validate(DataTimeContext<LeaveReportRequestDto> context) {
+        Set<LocalDate> seen = new HashSet<>();
         context.getTask().getDays().forEach(day -> {
-            double vacation = day.getVacationAmount() != null ? day.getVacationAmount() : 0.0;
-            double sick = day.getSickAmount() != null ? day.getSickAmount() : 0.0;
-            if (vacation + sick > 1.0) {
-                leaveDayAmountExceedsFullDay(String.format(LEAVE_DAY_AMOUNT_EXCEEDS_FULL_DAY_MSG,
-                        day.getDate(), day.getVacationAmount(), day.getSickAmount()));
+            if (!seen.add(day.getDate())) {
+                leaveDayDateDuplicated(String.format(LEAVE_DAY_DATE_DUPLICATED_MSG, day.getDate()));
             }
+            if (nullIfZero(day.getVacationAmount()) == null && nullIfZero(day.getSickAmount()) == null) {
+                leaveDayNothingReported(String.format(LEAVE_DAY_NOTHING_REPORTED_MSG, day.getDate()));
+            }
+            LeaveDay storedLeaveDay = context.getUserLeaveDaysByDate().get(day.getDate());
+            validateLeaveDayAmounts(day.getDate(),
+                    resolveFinalLeaveDayValue(day.getVacationAmount(), storedLeaveDay, LeaveDay::getVacationAmount),
+                    resolveFinalLeaveDayValue(day.getSickAmount(), storedLeaveDay, LeaveDay::getSickAmount));
         });
     }
 
     @Override
     protected void executeBusiness(DataTimeContext<LeaveReportRequestDto> context) {
-        List<LeaveDay> leaveDays = new ArrayList<>();
-        context.getTask().getDays().forEach(day -> {
-            if (day.getVacationAmount() != null) {
-                leaveDays.add(
-                        leaveDayMapper.toLeaveDay(context, day.getDate(), LeaveType.VACATION, day.getVacationAmount()));
+        Map<LocalDate, LeaveDay> storedByDate = context.getUserLeaveDaysByDate();
+        for (LeaveDayEntryDto inputDay : context.getTask().getDays()) {
+            LeaveDay leaveDay = storedByDate.get(inputDay.getDate());
+            if (leaveDay == null) {
+                leaveDay = leaveDayMapper.toLeaveDay(context, inputDay);
             }
-            if (day.getSickAmount() != null) {
-                leaveDays.add(leaveDayMapper.toLeaveDay(context, day.getDate(), LeaveType.SICK, day.getSickAmount()));
+            if (inputDay.getVacationAmount() != null) {
+                leaveDay.setVacationAmount(nullIfZero(inputDay.getVacationAmount()));
             }
-        });
-        context.setUserLeaveDaysList(leaveDays);
+            if (inputDay.getSickAmount() != null) {
+                leaveDay.setSickAmount(nullIfZero(inputDay.getSickAmount()));
+            }
+            context.putLeaveDayOnContext(leaveDay);
+        }
+    }
+
+    private Double resolveFinalLeaveDayValue(Double requested, LeaveDay storedLeaveDay,
+                                             Function<LeaveDay, Double> portion) {
+        if (requested != null) {
+            return requested;
+        }
+        return storedLeaveDay == null ? null : portion.apply(storedLeaveDay);
     }
 }

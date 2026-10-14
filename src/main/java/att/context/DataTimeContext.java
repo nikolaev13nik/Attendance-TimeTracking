@@ -4,12 +4,14 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
 import att.dto.DataTimeDto;
 import att.dto.EditDataTimeUserDto;
+import att.dto.EditLeaveDayDto;
 import att.dto.LeaveDayDto;
 import att.model.DataTime;
 import att.model.LeaveDay;
@@ -36,11 +38,13 @@ public class DataTimeContext<T> implements BusinessStrategyContext {
     private OffsetDateTime openSessionDate;
     private OffsetDateTime closeSessionDate;
     private EditDataTimeUserDto editDto;
+    private EditLeaveDayDto editLeaveDayDto;
+    private Integer leaveDayId;
     private Integer tenantId;
     @Builder.Default
     private List<DataTime> userWorkSessionList = new ArrayList<>();
     @Builder.Default
-    private List<LeaveDay> userLeaveDaysList = new ArrayList<>();
+    private Map<LocalDate, LeaveDay> userLeaveDaysByDate = new LinkedHashMap<>();
     // output - per user, keyed by idUser, so one context can be reused across a multi-user pipeline
     // (e.g. StatisticInfoService) without one user's result overwriting another's
     @Builder.Default
@@ -65,6 +69,18 @@ public class DataTimeContext<T> implements BusinessStrategyContext {
 
     public DataTimeDto getSingleResponseDataTimeDto() {
         return this.responseDataTimeDto.get(0);
+    }
+
+    public LeaveDayDto getSingleResponseLeaveDayDto() {
+        return this.responseLeaveDayDto.get(0);
+    }
+
+    public void putLeaveDayOnContext(LeaveDay leaveDay) {
+        this.userLeaveDaysByDate.put(leaveDay.getLeaveDate(), leaveDay);
+    }
+
+    public LeaveDay getSingleLeaveDay() {
+        return this.userLeaveDaysByDate.values().iterator().next();
     }
 
     @Override

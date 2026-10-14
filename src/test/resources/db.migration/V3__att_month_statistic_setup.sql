@@ -1,10 +1,4 @@
--- Month-statistic history for the enrichment consumer.
--- User 7 exists ONLY in this table: it has no att_work_sessions and no att_user_leave_days rows, so
--- StatisticInfoService.resolveTargetUserIds() never sees it and no HTTP flow can overwrite this history.
---
--- Anchor month is 2024-01. The consumer query is
--- findTop7...MonthStartDateLessThanEqualOrderBy...Desc(tenantId, userId, monthStart), so the expected
--- window is 2024-01 (the target itself) + the 6 months before it (2023-12 .. 2023-07).
+
 INSERT INTO att_month_statistic (tenant_id, user_id, month_start_date, work_days, overtime_hours,
                                  total_work_hours, vacation_days, sick_days, updated_by, sys_update_date)
 VALUES

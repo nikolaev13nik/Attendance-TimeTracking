@@ -10,6 +10,7 @@ import att.exceptions.ErrorConstants;
 import att.exceptions.NotFoundException;
 import att.mapper.SessionRecordMapper;
 import att.model.DataTime;
+import att.model.LeaveDay;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
@@ -54,7 +55,7 @@ public abstract class DataTimeServiceBase<R> implements BaseService<R> {
 
     protected void persist(DataTimeContext<R> context) {
         timeRepository.saveAll(context.getUserWorkSessionList());
-        leaveDaysRepository.saveAll(context.getUserLeaveDaysList());
+        leaveDaysRepository.saveAll(context.getUserLeaveDaysByDate().values());
         monthStatisticRepository.saveAll(context.getStatisticInfoHolder().getMonthStatisticList());
     }
 
@@ -65,5 +66,10 @@ public abstract class DataTimeServiceBase<R> implements BaseService<R> {
     protected DataTime findRecordOrThrow(Integer id, Integer tenantId) {
         return timeRepository.findByIdAndTenantId(id, tenantId).orElseThrow(
                 () -> new NotFoundException(String.format(ErrorConstants.ATTENDANCE_NOT_FOUND_MSG, id)));
+    }
+
+    protected LeaveDay findLeaveDayOrThrow(Integer id, Integer tenantId) {
+        return leaveDaysRepository.findByIdAndTenantId(id, tenantId).orElseThrow(
+                () -> new NotFoundException(String.format(ErrorConstants.LEAVE_DAY_NOT_FOUND_MSG, id)));
     }
 }

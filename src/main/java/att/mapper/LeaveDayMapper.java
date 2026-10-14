@@ -3,27 +3,26 @@ package att.mapper;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-import java.time.LocalDate;
 import java.util.List;
 
 import att.context.DataTimeContext;
 import att.dto.LeaveDayDto;
+import att.dto.LeaveDayEntryDto;
 import att.model.LeaveDay;
-import att.model.LeaveType;
 
 @Mapper(componentModel = "spring")
 public interface LeaveDayMapper {
 
-    @Mapping(target = "leaveDayKey.tenantId", source = "context.tenantId")
-    @Mapping(target = "leaveDayKey.idUser", source = "context.idUser")
-    @Mapping(target = "leaveDayKey.leaveDate", source = "date")
-    @Mapping(target = "leaveDayKey.leaveType", source = "type")
-    LeaveDay toLeaveDay(DataTimeContext<?> context, LocalDate date, LeaveType type, double amount);
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "tenantId", source = "context.tenantId")
+    @Mapping(target = "idUser", source = "context.idUser")
+    @Mapping(target = "leaveDate", source = "entry.date")
+    @Mapping(target = "vacationAmount", source = "entry.vacationAmount")
+    @Mapping(target = "sickAmount", source = "entry.sickAmount")
+    LeaveDay toLeaveDay(DataTimeContext<?> context, LeaveDayEntryDto entry);
 
-    @Mapping(target = "tenantId", source = "leaveDayKey.tenantId")
-    @Mapping(target = "userId", source = "leaveDayKey.idUser")
-    @Mapping(target = "date", source = "leaveDayKey.leaveDate")
-    @Mapping(target = "leaveType", source = "leaveDayKey.leaveType")
+    @Mapping(target = "userId", source = "idUser")
+    @Mapping(target = "date", source = "leaveDate")
     LeaveDayDto toDto(LeaveDay leaveDay);
 
     List<LeaveDayDto> toDtoList(List<LeaveDay> leaveDays);

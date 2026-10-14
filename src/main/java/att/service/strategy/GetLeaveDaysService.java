@@ -4,7 +4,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
-import java.util.List;
 
 import att.context.DataTimeContext;
 import att.mapper.LeaveDayMapper;
@@ -19,16 +18,16 @@ public class GetLeaveDaysService extends DataTimeServiceBase<Void> {
 
     @Override
     protected void fetch(DataTimeContext<Void> context) {
-        List<LeaveDay> found =
-                leaveDaysRepository.findByLeaveDayKeyTenantIdAndLeaveDayKeyIdUserAndLeaveDayKeyLeaveDateBetween(
-                        context.getTenantId(), context.getIdUser(), context.getStartDate(), context.getEndDate());
-        context.setUserLeaveDaysList(found.stream()
-                .sorted(Comparator.comparing((LeaveDay day) -> day.getLeaveDayKey().getLeaveDate()).reversed())
-                .toList());
+        leaveDaysRepository.findByTenantIdAndIdUserAndLeaveDateBetween(
+                        context.getTenantId(), context.getIdUser(), context.getStartDate(), context.getEndDate())
+                .forEach(context::putLeaveDayOnContext);
     }
 
     @Override
     protected void mapResult(DataTimeContext<Void> context) {
-        context.setResponseLeaveDayDto(leaveDayMapper.toDtoList(context.getUserLeaveDaysList()));
+        context.setResponseLeaveDayDto(leaveDayMapper.toDtoList(
+                context.getUserLeaveDaysByDate().values().stream()
+                        .sorted(Comparator.comparing(LeaveDay::getLeaveDate).reversed())
+                        .toList()));
     }
 }
