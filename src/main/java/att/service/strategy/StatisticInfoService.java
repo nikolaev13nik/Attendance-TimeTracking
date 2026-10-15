@@ -14,6 +14,7 @@ import java.util.TreeSet;
 import java.util.function.Function;
 
 import att.client.accounting.api.AccountApi;
+import att.client.accounting.dto.UserProfileDto;
 import att.context.DataTimeContext;
 import att.context.StatisticInfoHolder;
 import att.dto.MonthlyUserStatisticInfoDto;
@@ -25,6 +26,7 @@ import att.security.JwtClaimsResolver;
 
 import static att.exceptions.ErrorConstants.INCOMPLETE_SESSIONS_MSG;
 import static att.service.AttUtility.amountOrZero;
+import static java.util.Optional.ofNullable;
 import static org.hibernate.internal.util.collections.CollectionHelper.isNotEmpty;
 
 @Service
@@ -52,6 +54,7 @@ public class StatisticInfoService extends BaseGetService<Void> {
         context.setStartDate(monthStart);
         context.setEndDate(monthEnd);
         context.getStatisticInfoHolder().setTargetUserIds(resolveTargetUserIds(context));
+        resolveTargetUserProfiles(context);
     }
 
     @Override
@@ -107,6 +110,30 @@ public class StatisticInfoService extends BaseGetService<Void> {
         Set<Integer> userIds = new TreeSet<>(timeRepository.findDistinctUserIdsByTenantId(context.getTenantId()));
         userIds.addAll(leaveDaysRepository.findDistinctUserIdsByTenantId(context.getTenantId()));
         return userIds;
+    }
+
+    private void resolveTargetUserProfiles(DataTimeContext<Void> context) {
+        StatisticInfoHolder holder = context.getStatisticInfoHolder();
+        if (Boolean.TRUE.equals(holder.getReport())) {
+            try {
+                fetchTargetUserProfiles(context).stream()
+                        .filter(profile -> holder.getTargetUserIds().contains(profile.getIdUser()))
+                        .forEach(profile -> holder.getTargetUserProfiles().put(profile.getIdUser(), profile));
+            } catch (RuntimeException e) {
+                logger.warn(
+                        "Could not resolve names of the reported users of tenant {}, the report will carry ids only",
+                        context.getTenantId(), e);
+            }
+        }
+    }
+
+    private List<UserProfileDto> fetchTargetUserProfiles(DataTimeContext<Void> context) {
+        if (context.getIdUser() != null) {
+            return ofNullable(accountApi.getUser(context.getTenantId(), context.getIdUser()))
+                    .map(List::of)
+                    .orElseGet(List::of);
+        }
+        return ofNullable(accountApi.getAllUsers(context.getTenantId())).orElseGet(List::of);
     }
 
     private void resolveReportRequester(DataTimeContext<Void> context) {

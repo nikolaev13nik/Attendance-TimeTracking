@@ -6,7 +6,9 @@ import com.google.common.collect.Table;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import att.client.accounting.dto.UserProfileDto;
 import att.dto.MonthlyUserStatisticInfoDto;
@@ -20,6 +22,7 @@ public class StatisticInfoHolder {
     // For response
     Table<Integer, OffsetDateTime, MonthlyUserStatisticInfoDto> multipleUserData = HashBasedTable.create();
     Collection<Integer> targetUserIds = new ArrayList<>();
+    Map<Integer, UserProfileDto> targetUserProfiles = new HashMap<>();
     //for save
     List<MonthStatistic> monthStatisticList = new ArrayList<>();
     private OffsetDateTime startOfMonth;

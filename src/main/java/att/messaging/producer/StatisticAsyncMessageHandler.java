@@ -22,7 +22,8 @@ public class StatisticAsyncMessageHandler implements AsyncMessageHandler {
             holder.getTargetUserIds().forEach(userId ->
                     statisticEventPublisher.sendMonthStatistic(userId,
                             monthStatisticMapper.toEvent(holder.getMultipleUserData()
-                                    .get(userId, holder.getStartOfMonth()), holder.getReportRequester())));
+                                            .get(userId, holder.getStartOfMonth()), holder.getReportRequester(),
+                                    holder.getTargetUserProfiles().get(userId))));
         }
     }
 }

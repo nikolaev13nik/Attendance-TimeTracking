@@ -42,7 +42,19 @@ public interface MonthStatisticMapper {
     @Mapping(target = "reportUserName", source = "reportRequester.firstName")
     @Mapping(target = "reportUserLastName", source = "reportRequester.lastName")
     @Mapping(target = "reportEmail", source = "reportRequester.email")
-    MonthStatisticEvent toEvent(MonthlyUserStatisticInfoDto dto, UserProfileDto reportRequester);
+    @Mapping(target = "userName", expression = "java(fullName(targetUser))")
+    MonthStatisticEvent toEvent(MonthlyUserStatisticInfoDto dto, UserProfileDto reportRequester,
+                                UserProfileDto targetUser);
+
+    default String fullName(UserProfileDto profile) {
+        if (profile == null) {
+            return null;
+        }
+        String fullName = "%s %s".formatted(
+                profile.getFirstName() == null ? "" : profile.getFirstName(),
+                profile.getLastName() == null ? "" : profile.getLastName()).trim();
+        return fullName.isEmpty() ? null : fullName;
+    }
 
     /**
      * Forwards the trigger event's identity and report-requester fields onto the analysis request, so the requester

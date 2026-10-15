@@ -53,6 +53,7 @@ class StatisticEnrichmentConsumerTest extends BaseApiControllerTest {
                 .tenantId(2)
                 .userId(SEEDED_STAT_USER_ID)
                 .yearMonth(YearMonth.parse(SEEDED_STAT_TARGET_MONTH))
+                .userName(expectedTargetUserName(SEEDED_STAT_USER_ID))
                 .reportUserName(REPORT_FIRST_NAME)
                 .reportUserLastName(REPORT_LAST_NAME)
                 .reportEmail(REPORT_EMAIL)
@@ -77,6 +78,9 @@ class StatisticEnrichmentConsumerTest extends BaseApiControllerTest {
         assertEquals(SEEDED_STAT_USER_ID, analysis.getUserId());
         assertReportRequester(analysis.getReportUserName(), analysis.getReportUserLastName(),
                 analysis.getReportEmail());
+        assertEquals(expectedTargetUserName(SEEDED_STAT_USER_ID), analysis.getUserName(),
+                "Reason: the reported user's name is resolved once in the statistic pipeline, so enrichment must "
+                        + "forward it unchanged rather than look it up again");
 
         List<YearMonth> entryMonths = analysis.getEntries().stream()
                 .map(entry -> entry.getYearMonth()).toList();
@@ -136,6 +140,8 @@ class StatisticEnrichmentConsumerTest extends BaseApiControllerTest {
                 "Reason: the requester fields are optional, so a trigger event without them must not fail enrichment");
         assertNull(analysis.getReportUserLastName());
         assertNull(analysis.getReportEmail());
+        assertNull(analysis.getUserName(),
+                "Reason: the reported user's name is optional too, and a trigger event without it must still enrich");
         assertFalse(analysis.getEntries().isEmpty(),
                 "Reason: the history must still be attached when there is no requester to notify");
     }

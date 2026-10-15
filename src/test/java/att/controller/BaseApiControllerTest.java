@@ -132,6 +132,8 @@ public abstract class BaseApiControllerTest {
     protected static final String REPORT_FIRST_NAME = "John";
     protected static final String REPORT_LAST_NAME = "Doe";
     protected static final String REPORT_EMAIL = "john.doe@example.com";
+    protected static final String TARGET_FIRST_NAME_PREFIX = "Employee";
+    protected static final String TARGET_LAST_NAME = "Smith";
 
     @MockitoBean
     protected AccountApi accountApi;
@@ -146,6 +148,29 @@ public abstract class BaseApiControllerTest {
                 .firstName(REPORT_FIRST_NAME)
                 .lastName(REPORT_LAST_NAME)
                 .email(REPORT_EMAIL));
+    }
+
+    /**
+     * Makes Attendance-Accounting answer the reported-user lookups: {@code getUser} for a single-user report and
+     * {@code getAllUsers} for a tenant-wide one, both naming {@link #USER_ID} and {@link #OTHER_USER_ID}.
+     */
+    protected void stubTargetUserProfiles(int tenantId) {
+        when(accountApi.getUser(tenantId, USER_ID)).thenReturn(targetProfile(tenantId, USER_ID));
+        when(accountApi.getUser(tenantId, OTHER_USER_ID)).thenReturn(targetProfile(tenantId, OTHER_USER_ID));
+        when(accountApi.getAllUsers(tenantId))
+                .thenReturn(List.of(targetProfile(tenantId, USER_ID), targetProfile(tenantId, OTHER_USER_ID)));
+    }
+
+    private UserProfileDto targetProfile(int tenantId, Integer idUser) {
+        return new UserProfileDto()
+                .idUser(idUser)
+                .tenantId(tenantId)
+                .firstName(TARGET_FIRST_NAME_PREFIX + idUser)
+                .lastName(TARGET_LAST_NAME);
+    }
+
+    protected String expectedTargetUserName(Integer idUser) {
+        return "%s%d %s".formatted(TARGET_FIRST_NAME_PREFIX, idUser, TARGET_LAST_NAME);
     }
 
     protected void assertReportRequester(String reportUserName, String reportUserLastName, String reportEmail) {

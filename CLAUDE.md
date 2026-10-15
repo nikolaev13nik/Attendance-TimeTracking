@@ -141,9 +141,11 @@ names are constants in `att.messaging.MessagingConstants`:
 
 Both payloads mix in the `ReportRequesterContext` schema, which flattens into the **outer** fields
 `reportUserName` / `reportUserLastName` / `reportEmail` on each message (one definition, reused by both
-topics). They are optional by contract so messages produced before the fields existed still deserialize —
-the recipient check belongs to the consumer. The enrichment consumer copies them straight from the trigger
-event onto the analysis request via `MonthStatisticMapper.toAnalysisRequest`.
+topics), and `TenantUserContext`, which additionally carries `userName` — the reported employee's first and
+last name, as opposed to the requester's. All four are optional by contract so messages produced before the
+fields existed still deserialize — the recipient check belongs to the consumer. The enrichment consumer
+copies them straight from the trigger event onto the analysis request via
+`MonthStatisticMapper.toAnalysisRequest`, which needs no mapping rule for them: they match by name.
 
 `StatisticEventProducer` sends via `StreamBridge` with the user id as the Kafka message key (partition
 affinity per user). The consumer (`StatisticEnrichmentConsumer`, a `java.util.function.Consumer` bean) is
@@ -159,15 +161,28 @@ caller's JWT** from the `SecurityContextHolder` (so downstream authorization see
 `InternalApiResponseErrorHandler`, which maps 404 → `NotFoundException` and any other error →
 `InternalApiException`. Reuse that error handler for any further internal client.
 
-The one production caller is `StatisticInfoService.resolveReportRequester`, which looks up the **report
-requester** — the caller identified by the JWT `sub`, read through `att.security.JwtClaimsResolver` — with
-`getUser(pathTenantId, sub)`, but **only when `report=true`**. The resolved `UserProfileDto` is parked on
-`StatisticInfoHolder.reportRequester` and its name/email are published as the `reportUserName` /
-`reportUserLastName` / `reportEmail` fields of both statistic events, so the downstream AI service knows who
-to email. The lookup runs inside the transactional pipeline and is deliberately *not* wrapped: a failure
-fails the statistic request, persisting and publishing nothing, rather than emitting an event no one can be
-notified from. Beware that Accounting answers an unknown user/tenant pair with **400, not 404**, so a `sub`
-that is not a member of the path tenant surfaces as a 500 `InternalApiException`.
+There are two production callers, both in `StatisticInfoService` and both **only when `report=true`**:
+
+- `resolveReportRequester` looks up the **report requester** — the caller identified by the JWT `sub`, read
+  through `att.security.JwtClaimsResolver` — with `getUser(pathTenantId, sub)`.
+- `resolveTargetUserProfiles` looks up the **reported employees**, so their names can travel on the events:
+  `getUser(tenantId, idUser)` for a single-user report, one `getAllUsers(tenantId)` for a tenant-wide one
+  (never one lookup per user). The profiles are parked on `StatisticInfoHolder.targetUserProfiles` and
+  `MonthStatisticMapper` joins first + last into the event's `userName`.
+
+The resolved requester `UserProfileDto` is parked on `StatisticInfoHolder.reportRequester` and its
+name/email are published as the `reportUserName` / `reportUserLastName` / `reportEmail` fields of both
+statistic events, so the downstream AI service knows who to email.
+
+**The two lookups differ in how they fail, on purpose.** The requester lookup runs inside the transactional
+pipeline and is deliberately *not* wrapped: a failure fails the statistic request, persisting and publishing
+nothing, rather than emitting an event no one can be notified from. A reported employee's name, by contrast,
+is cosmetic — the AI service falls back to printing the user id — so `resolveTargetUserProfiles` catches
+`RuntimeException`, warns and leaves `userName` null. Do not "fix" that by letting it propagate: it would
+turn an Accounting blip into a lost analysis after the statistics were already computed.
+
+Beware that Accounting answers an unknown user/tenant pair with **400, not 404**, so a `sub` that is not a
+member of the path tenant surfaces as a 500 `InternalApiException`.
 
 ### Multi-tenancy & authorization
 
@@ -219,8 +234,9 @@ that is not a member of the path tenant surfaces as a 500 `InternalApiException`
   exist; monthly statistics are computed on demand by `POST /attendance/statistic/tenant/{tenantId}` with
   `report=true`. There is no daily-conflict Kafka flow either — only the month-statistic pair of topics
   above.
-- **Only one call to Accounting.** `AccountApi` is used by the report-requester lookup and nothing else
-  (see above); no other endpoint enriches its response from Accounting.
+- **Accounting is called only by the statistic report.** `AccountApi` is used by the two lookups described
+  above — the report requester and the reported employees — and nothing else; no other endpoint enriches
+  its response from Accounting.
 - Don't reference a scheduler or a conflict topic as if it exists — check first.
 
 ## Testing conventions
