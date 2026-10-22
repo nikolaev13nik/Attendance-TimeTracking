@@ -444,6 +444,30 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
 
     @Test
     @FlywayTest
+    @DisplayName("GET /record/overtimeMinutes sums all sessions of one date before applying the daily threshold")
+    void overtimeMinutesSumsSessionsPerDayTest() {
+        ResponseEntity<String> closeBlocking = sendRequestWithAdmin(HttpMethod.POST, EDIT_URL, null, 2,
+                createEditDataTimeUserDto(SEEDED_OPEN_ID, null, OffsetDateTime.parse("2024-01-04T17:30:00Z")));
+        assertEquals(HttpStatus.OK, closeBlocking.getStatusCode());
+
+        DataTime secondSessionSameDay = new DataTime();
+        secondSessionSameDay.setTenantId(2);
+        secondSessionSameDay.setIdUser(USER_ID);
+        secondSessionSameDay.setWorkDate(LocalDate.parse("2024-01-03"));
+        secondSessionSameDay.setOpenSessionDate(OffsetDateTime.parse("2024-01-03T18:00:00Z"));
+        secondSessionSameDay.setCloseSessionDate(OffsetDateTime.parse("2024-01-03T19:00:00Z"));
+        sessionAttendanceTimeRepository.save(secondSessionSameDay);
+
+        ResponseEntity<String> response = sendRequestWithAdmin(HttpMethod.GET, range(OVERTIME_MINUTES_URL, USER_ID),
+                null, 2, null);
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(120L, readObject(response, Long.class).longValue(),
+                "Reason: 2024-01-03 has 8h + 1h in two sessions, so the day carries 60 overtime minutes on top of "
+                        + "the 30 + 30 from 2024-01-02 and 2024-01-04, although no single session exceeds 8h");
+    }
+
+    @Test
+    @FlywayTest
     @DisplayName("GET check incomplete sessions as admin returns rows with an open start/finish")
     void checkIncompleteSessions_AsAdminTest() {
         ResponseEntity<String> response = sendRequestWithAdmin(HttpMethod.GET, range(CHECK_URL), USER_ID, 2, null);

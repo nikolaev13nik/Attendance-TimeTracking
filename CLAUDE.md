@@ -215,7 +215,12 @@ member of the path tenant surfaces as a 500 `InternalApiException`.
   "vacation + sick ≤ 1 day" rule (`AttUtility.validateLeaveDayAmounts`).
 - Worked/overtime minutes are computed in SQL, not Java: see the native queries in
   `SessionAttendanceTimeRepository` (`calculateWorkedMinutes`, `calculateOvertimeMinutes` — overtime is
-  minutes beyond 480/day, per day, summed). MapStruct mappers (`att.mapper`) do entity/DTO/event mapping.
+  minutes beyond a daily threshold, per day across all of that day's sessions, summed; the threshold is
+  `att.overtime.daily-threshold` as `H.MM` clock time — `8.40` is 8h40m, and a single minute digit is
+  right-padded so `8.4` from an unquoted YAML float means the same; `8` and `8.0` are 8h00m — read by
+  `att.config.WorkTimeConfiguration`, which services inject, and which falls back to 8h for any value it
+  cannot read (including minutes of 60 or more); default `8.0`, set in k8s through
+  `overtimeDailyThreshold` in `helm/timetracking/values.yaml` → `timetracking-config`). MapStruct mappers (`att.mapper`) do entity/DTO/event mapping.
 - Local/dev runs on a file-based H2 database (`spring.jpa.hibernate.ddl-auto=update`); tests run on an
   in-memory H2 database with schema/seed data applied via Flyway migrations in
   `src/test/resources/db.migration` (`V1__schema.sql`, `V2__att_work_sessions_setup.sql`,

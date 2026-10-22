@@ -40,20 +40,23 @@ public interface SessionAttendanceTimeRepository extends JpaRepository<DataTime,
                                           @Param("toDate") LocalDate toDate);
 
     @Query(value =
-            "SELECT COALESCE(SUM(EXTRACT(EPOCH FROM (close_session_date - open_session_date)) / 60 - 480), 0) " +
+            "SELECT COALESCE(SUM(day_minutes - :thresholdMinutes), 0) " +
+                    "FROM (SELECT SUM(EXTRACT(EPOCH FROM (close_session_date - open_session_date)) / 60) AS day_minutes " +
                     "FROM att_work_sessions " +
                     "WHERE tenant_id = :tenantId " +
                     "AND user_id = :userId " +
                     "AND work_date BETWEEN :fromDate AND :toDate " +
                     "AND open_session_date IS NOT NULL " +
                     "AND close_session_date IS NOT NULL " +
-                    "AND EXTRACT(EPOCH FROM (close_session_date - open_session_date)) / 60 > 480",
+                    "GROUP BY work_date) daily " +
+                    "WHERE day_minutes > :thresholdMinutes",
             nativeQuery = true)
     Long calculateOvertimeMinutes(
             @Param("tenantId") Integer tenantId,
             @Param("userId") Integer userId,
             @Param("fromDate") LocalDate fromDate,
-            @Param("toDate") LocalDate toDate);
+            @Param("toDate") LocalDate toDate,
+            @Param("thresholdMinutes") Long thresholdMinutes);
 
 
     @Query(value =

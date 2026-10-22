@@ -10,3 +10,6 @@ data:
   {{- with .Values.readTimeoutMs }}
   ATT_INTEGRATION_ATTENDANCE_ACCOUNTING_READ_TIMEOUT_MS: {{ . | quote }}
   {{- end }}
+  {{- with .Values.overtimeDailyThreshold }}
+  ATT_OVERTIME_DAILY_THRESHOLD: {{ . | quote }}
+  {{- end }}

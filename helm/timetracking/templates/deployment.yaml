@@ -98,6 +98,13 @@ spec:
                   name: timetracking-config
                   key: ATT_INTEGRATION_ATTENDANCE_ACCOUNTING_READ_TIMEOUT_MS
             {{- end }}
+            {{- with .Values.overtimeDailyThreshold }}
+            - name: ATT_OVERTIME_DAILY_THRESHOLD
+              valueFrom:
+                configMapKeyRef:
+                  name: timetracking-config
+                  key: ATT_OVERTIME_DAILY_THRESHOLD
+            {{- end }}
 
           resources:
             {{- toYaml .Values.resources | nindent 12 }}

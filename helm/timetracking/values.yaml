@@ -32,6 +32,8 @@ kafkaBootstrapServersKey: KAFKA_BOOTSTRAP_SERVERS
 connectTimeoutMs: "2000"
 readTimeoutMs: "5000"
 
+overtimeDailyThreshold: "8.00"
+
 javaToolOptions: "-XX:MaxRAMPercentage=75"
 
 resources:
