@@ -1,5 +1,6 @@
 package att.security;
 
+import org.springframework.security.access.hierarchicalroles.RoleHierarchy;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -17,6 +18,8 @@ import static att.security.SecurityConstants.ADMINISTRATOR_AUTHORITY;
  * user's id go through here, so the {@code instanceof Jwt} unwrapping lives in one spot.
  */
 public final class JwtClaimsResolver {
+
+    private static final RoleHierarchy ROLE_HIERARCHY = SecurityConfiguration.roleHierarchy();
 
     private JwtClaimsResolver() {
     }
@@ -47,7 +50,7 @@ public final class JwtClaimsResolver {
 
     public static boolean isAdministrator() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        return auth != null && auth.getAuthorities().stream()
+        return auth != null && ROLE_HIERARCHY.getReachableGrantedAuthorities(auth.getAuthorities()).stream()
                 .map(GrantedAuthority::getAuthority)
                 .anyMatch(ADMINISTRATOR_AUTHORITY::equals);
     }

@@ -192,7 +192,8 @@ member of the path tenant surfaces as a 500 `InternalApiException`.
   (403) any request whose path `tenantId` doesn't match the JWT's `tenantId` claim, unless the caller has
   `ROLE_ADMINISTRATOR`.
 - Method-level authorization is additionally enforced with `@PreAuthorize` on controller methods
-  (`att.security.SecurityConstants.SecurityRoles`: `USER`, `MODERATOR`, `ADMINISTRATOR`), typically
+  (`att.security.SecurityConstants.SecurityRoles`: `USER`, `ADMINISTRATOR`, `PLATFORM_ADMIN`, with the
+  `RoleHierarchy` bean `PLATFORM_ADMIN > ADMINISTRATOR > USER`), typically
   `hasRole(ADMINISTRATOR) || #idUser.toString() == authentication.name` for self-service endpoints.
   Everything else is admin-only.
 - Auth is JWT-only (`SecurityConfiguration`), HMAC-signed (`att.security.jwt.secret`), validated as an
