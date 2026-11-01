@@ -29,6 +29,6 @@ public class StatisticInfoHolder {
     private Boolean report;
     // the caller (JWT sub) the report was requested by, resolved from Attendance-Accounting only when report=true;
     // its name/email travel on every statistic event so the downstream AI service knows who to notify
-    private UserProfileDto reportRequester;
+    private UserProfileDto reporterProfile;
 
 }

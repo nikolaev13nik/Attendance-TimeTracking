@@ -22,11 +22,13 @@ import att.exceptions.BadRequestException;
 import att.mapper.MonthStatisticMapper;
 import att.model.LeaveDay;
 import att.model.MonthStatistic;
-import att.security.JwtClaimsResolver;
 
 import static att.exceptions.ErrorConstants.INCOMPLETE_SESSIONS_MSG;
+import static att.exceptions.ErrorConstants.REPORTER_UNRESOLVED_MSG;
 import static att.service.AttUtility.amountOrZero;
+import static java.util.Objects.nonNull;
 import static java.util.Optional.ofNullable;
+import static org.apache.commons.lang3.BooleanUtils.isFalse;
 import static org.hibernate.internal.util.collections.CollectionHelper.isNotEmpty;
 
 @Service
@@ -55,10 +57,14 @@ public class StatisticInfoService extends BaseGetService<Void> {
         context.setEndDate(monthEnd);
         context.getStatisticInfoHolder().setTargetUserIds(resolveTargetUserIds(context));
         resolveTargetUserProfiles(context);
+        fetchReporterProfile(context);
     }
 
     @Override
     protected void validate(DataTimeContext<Void> context) {
+        if (isReportRequested(context) && isFalse(hasReporter(context))) {
+            throw new BadRequestException(REPORTER_UNRESOLVED_MSG);
+        }
         context.getStatisticInfoHolder().getTargetUserIds().forEach(targetUserId -> {
             if (isNotEmpty(fetchIncompleteSessions(context.getTenantId(), targetUserId, context.getStartDate(),
                     context.getEndDate()))) {
@@ -76,7 +82,6 @@ public class StatisticInfoService extends BaseGetService<Void> {
             getWorkedMinutesBetweenService.fetch(context);
             getOvertimeMinutesBetweenService.fetch(context);
             populateLeaveDayTotals(context, userId);
-            resolveReportRequester(context);
             composeUserMonthStatistic(context, userId, targetMonth);
         }
     }
@@ -136,13 +141,20 @@ public class StatisticInfoService extends BaseGetService<Void> {
         return ofNullable(accountApi.getAllUsers(context.getTenantId())).orElseGet(List::of);
     }
 
-    private void resolveReportRequester(DataTimeContext<Void> context) {
-        StatisticInfoHolder holder = context.getStatisticInfoHolder();
-        if (Boolean.TRUE.equals(holder.getReport()) && holder.getReportRequester() == null) {
-            holder.setReportRequester(accountApi.getUser(JwtClaimsResolver.currentHomeTenantId(),
-                    JwtClaimsResolver.currentUserId()));
-            logger.info("Target reporter is:{}", holder.getReportRequester());
+    private void fetchReporterProfile(DataTimeContext<Void> context) {
+        if (isReportRequested(context) && hasReporter(context)) {
+            StatisticInfoHolder holder = context.getStatisticInfoHolder();
+            holder.setReporterProfile(accountApi.getUser(context.getReporterTenantId(), context.getReporterId()));
+            logger.info("Reporter profile is:{}", holder.getReporterProfile());
         }
+    }
+
+    private static boolean isReportRequested(DataTimeContext<Void> context) {
+        return Boolean.TRUE.equals(context.getStatisticInfoHolder().getReport());
+    }
+
+    private static boolean hasReporter(DataTimeContext<Void> context) {
+        return nonNull(context.getReporterId()) && nonNull(context.getReporterTenantId());
     }
 
     private void populateLeaveDayTotals(DataTimeContext<Void> context, Integer userId) {

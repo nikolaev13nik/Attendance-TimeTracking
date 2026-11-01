@@ -76,7 +76,7 @@ class StatisticEnrichmentConsumerTest extends BaseApiControllerTest {
         UserStatisticAnalysisRequestEvent analysis = sendMsToEnrichConsumer();
         assertEquals(2, analysis.getTenantId());
         assertEquals(SEEDED_STAT_USER_ID, analysis.getUserId());
-        assertReportRequester(analysis.getReportUserName(), analysis.getReportUserLastName(),
+        assertReporterProfile(analysis.getReportUserName(), analysis.getReportUserLastName(),
                 analysis.getReportEmail());
         assertEquals(expectedTargetUserName(SEEDED_STAT_USER_ID), analysis.getUserName(),
                 "Reason: the reported user's name is resolved once in the statistic pipeline, so enrichment must "

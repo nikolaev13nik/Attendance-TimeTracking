@@ -18,9 +18,9 @@ import att.model.LeaveDay;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static att.security.SecurityConstants.PLATFORM_TENANT_ID;
-import static att.security.SecurityConstants.SecurityRoles.ADMINISTRATOR;
-import static att.security.SecurityConstants.SecurityRoles.PLATFORM_ADMIN;
+import static co.il.attendance.security.SecurityConstants.PLATFORM_TENANT_ID;
+import static co.il.attendance.security.SecurityConstants.SecurityRoles.ADMINISTRATOR;
+import static co.il.attendance.security.SecurityConstants.SecurityRoles.PLATFORM_ADMIN;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 
@@ -36,7 +36,7 @@ public class SecurityControlTest extends BaseApiControllerTest {
         ResponseEntity<String> response = sendRequestWithUserRole(HttpMethod.PUT, OPEN_URL,
                 OTHER_USER_ID, 123, task, jwtTokenUserTenant_123);
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
-        assertEquals(ACCESS_DENIED, errorMessage(response));
+        assertEquals(FORBIDDEN_MESSAGE, errorMessage(response));
 
         // db state validations
         long countAfter = sessionAttendanceTimeRepository.count();
@@ -56,7 +56,7 @@ public class SecurityControlTest extends BaseApiControllerTest {
         ResponseEntity<String> response = sendRequestWithUserRole(HttpMethod.PUT, CLOSE_URL,
                 2, 123, task, jwtTokenUserTenant_123);
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
-        assertEquals(ACCESS_DENIED, errorMessage(response));
+        assertEquals(FORBIDDEN_MESSAGE, errorMessage(response));
         long countAfter = sessionAttendanceTimeRepository.count();
         assertEquals(recordCountBefore, countAfter,
                 String.format("Reason: total count of attendance record should not be changed ,expected:%s ,exist:%s",
@@ -74,7 +74,7 @@ public class SecurityControlTest extends BaseApiControllerTest {
                 EDIT_URL, 2, 123,
                 createEditDataTimeUserDto(SEEDED_FINISHED_ID, null, newFinishTime), jwtTokenUserTenant_123);
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
-        assertEquals(ACCESS_DENIED, errorMessage(response));
+        assertEquals(FORBIDDEN_MESSAGE, errorMessage(response));
 
         long countAfter = sessionAttendanceTimeRepository.count();
         assertEquals(recordCountBefore, countAfter,
@@ -93,7 +93,7 @@ public class SecurityControlTest extends BaseApiControllerTest {
         ResponseEntity<String> response = sendRequestWithUserRole(HttpMethod.GET, range(RANGE_RECORDS_URL, 123456),
                 3, 123, null, jwtTokenUserTenant_123);
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
-        assertEquals(ACCESS_DENIED, errorMessage(response));
+        assertEquals(FORBIDDEN_MESSAGE, errorMessage(response));
 
         long countAfter = sessionAttendanceTimeRepository.count();
         assertEquals(recordCountBefore, countAfter,
@@ -109,7 +109,7 @@ public class SecurityControlTest extends BaseApiControllerTest {
         ResponseEntity<String> response = sendRequestWithUserRole(HttpMethod.GET,
                 range(RANGE_RECORDS_URL, USER_ID), 1, 123, null, jwtTokenUserTenant_123);
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
-        assertEquals(ACCESS_DENIED, errorMessage(response));
+        assertEquals(FORBIDDEN_MESSAGE, errorMessage(response));
 
         long countAfter = sessionAttendanceTimeRepository.count();
         assertEquals(recordCountBefore, countAfter,
@@ -125,7 +125,7 @@ public class SecurityControlTest extends BaseApiControllerTest {
         ResponseEntity<String> response = sendRequestWithUserRole(HttpMethod.GET,
                 range(WORKDAYS_URL, USER_ID), 2, 123, null, jwtTokenUserTenant_123);
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
-        assertEquals(ACCESS_DENIED, errorMessage(response));
+        assertEquals(FORBIDDEN_MESSAGE, errorMessage(response));
 
         long countAfter = sessionAttendanceTimeRepository.count();
         assertEquals(recordCountBefore, countAfter,
@@ -141,7 +141,7 @@ public class SecurityControlTest extends BaseApiControllerTest {
         ResponseEntity<String> response = sendRequestWithUserRole(HttpMethod.GET, range(MINUTES_URL
                 , USER_ID), null, 123, null, jwtTokenUserTenant_123);
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
-        assertEquals(ACCESS_DENIED, errorMessage(response));
+        assertEquals(FORBIDDEN_MESSAGE, errorMessage(response));
 
         long countAfter = sessionAttendanceTimeRepository.count();
         assertEquals(recordCountBefore, countAfter,
@@ -157,7 +157,7 @@ public class SecurityControlTest extends BaseApiControllerTest {
         ResponseEntity<String> response = sendRequestWithUserRole(HttpMethod.GET,
                 range(OVERTIME_MINUTES_URL, USER_ID), 1, 123, null, jwtTokenUserTenant_123);
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
-        assertEquals(ACCESS_DENIED, errorMessage(response));
+        assertEquals(FORBIDDEN_MESSAGE, errorMessage(response));
 
         long countAfter = sessionAttendanceTimeRepository.count();
         assertEquals(recordCountBefore, countAfter,
@@ -175,7 +175,7 @@ public class SecurityControlTest extends BaseApiControllerTest {
         ResponseEntity<String> response = sendRequestWithUserRole(HttpMethod.GET, range(CHECK_URL), USER_ID,
                 123, null, jwtTokenUserTenant_123);
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
-        assertEquals(ACCESS_DENIED, errorMessage(response));
+        assertEquals(FORBIDDEN_MESSAGE, errorMessage(response));
 
         long countAfter = sessionAttendanceTimeRepository.count();
         assertEquals(recordCountBefore, countAfter,
@@ -192,7 +192,7 @@ public class SecurityControlTest extends BaseApiControllerTest {
         ResponseEntity<String> response = sendRequestWithUserRole(HttpMethod.DELETE, REMOVE_URL,
                 SEEDED_FINISHED_ID, 123, null, jwtTokenUserTenant_123);
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
-        assertEquals(ACCESS_DENIED, errorMessage(response));
+        assertEquals(FORBIDDEN_MESSAGE, errorMessage(response));
         assertTrue(sessionAttendanceTimeRepository.existsById(SEEDED_FINISHED_ID));
 
         long countAfter = sessionAttendanceTimeRepository.count();
@@ -212,7 +212,7 @@ public class SecurityControlTest extends BaseApiControllerTest {
         ResponseEntity<String> response = sendRequestWithUserRole(HttpMethod.POST, ADD_LEAVE_DAYS_URL,
                 USER_ID, 123, task, jwtTokenUserTenant_123);
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
-        assertEquals(ACCESS_DENIED, errorMessage(response));
+        assertEquals(FORBIDDEN_MESSAGE, errorMessage(response));
 
         long countAfter = leaveDaysRepository.count();
         assertEquals(countBefore, countAfter,
@@ -228,7 +228,7 @@ public class SecurityControlTest extends BaseApiControllerTest {
         ResponseEntity<String> response = sendRequestWithUserRole(HttpMethod.POST,
                 statistic(STATISTIC_URL, "2024-01", USER_ID), null, 123, null, jwtTokenUserTenant_123);
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
-        assertEquals(ACCESS_DENIED, errorMessage(response));
+        assertEquals(FORBIDDEN_MESSAGE, errorMessage(response));
 
         long countAfter = monthStatisticRepository.count();
         assertEquals(countBefore, countAfter,
@@ -244,7 +244,7 @@ public class SecurityControlTest extends BaseApiControllerTest {
         ResponseEntity<String> response = sendRequestWithUserRole(HttpMethod.POST, LEAVE_DAY_CHANGE_URL,
                 null, 123, createEditLeaveDayDto(SEEDED_LEAVE_SPLIT_ID, null, 1.0, 0.0), jwtTokenUserTenant_123);
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
-        assertEquals(ACCESS_DENIED, errorMessage(response));
+        assertEquals(FORBIDDEN_MESSAGE, errorMessage(response));
 
         LeaveDay untouched = findLeaveDayOrFail(SEEDED_LEAVE_SPLIT_ID);
         assertEquals(0.5, untouched.getVacationAmount(),
@@ -264,7 +264,7 @@ public class SecurityControlTest extends BaseApiControllerTest {
         ResponseEntity<String> response = sendRequestWithUserRole(HttpMethod.DELETE, LEAVE_DAY_REMOVE_URL,
                 SEEDED_LEAVE_SICK_ID, 123, null, jwtTokenUserTenant_123);
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
-        assertEquals(ACCESS_DENIED, errorMessage(response));
+        assertEquals(FORBIDDEN_MESSAGE, errorMessage(response));
         assertTrue(leaveDaysRepository.existsById(SEEDED_LEAVE_SICK_ID),
                 "Reason: removing leave stays with administrators, so the record must survive");
         assertEquals(countBefore, leaveDaysRepository.count(),
@@ -272,7 +272,6 @@ public class SecurityControlTest extends BaseApiControllerTest {
     }
 
 
-    private static final String TENANT_MISMATCH = "Request was rejected: JWT's tenant does not match to path";
     private static final int ATTACKER_TENANT_ID = 999;
 
     @Test
@@ -283,7 +282,7 @@ public class SecurityControlTest extends BaseApiControllerTest {
                 null, adminToken(ATTACKER_TENANT_ID));
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode(),
                 "Reason: ADMINISTRATOR manages its own company only, it never bypasses the tenant check");
-        assertTrue(errorMessage(response).contains(TENANT_MISMATCH));
+        assertEquals(FORBIDDEN_MESSAGE, errorMessage(response));
     }
 
     @Test
@@ -295,7 +294,7 @@ public class SecurityControlTest extends BaseApiControllerTest {
         ResponseEntity<String> response = sendRequestWithUserRole(HttpMethod.POST, EDIT_URL, null, 2,
                 createEditDataTimeUserDto(SEEDED_FINISHED_ID, null, newFinishTime), adminToken(ATTACKER_TENANT_ID));
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
-        assertTrue(errorMessage(response).contains(TENANT_MISMATCH));
+        assertEquals(FORBIDDEN_MESSAGE, errorMessage(response));
         DataTime after = sessionAttendanceTimeRepository.findById(SEEDED_FINISHED_ID).orElseThrow();
         assertEquals(before.getCloseSessionDate(), after.getCloseSessionDate(),
                 "Reason: a rejected cross-tenant edit must leave the session untouched");
@@ -319,7 +318,7 @@ public class SecurityControlTest extends BaseApiControllerTest {
                 null, mintToken(ADMIN_SUB_ID, ATTACKER_TENANT_ID, PLATFORM_ADMIN.name()));
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode(),
                 "Reason: the bypass needs both the PLATFORM_ADMIN role and the platform tenant");
-        assertTrue(errorMessage(response).contains(TENANT_MISMATCH));
+        assertEquals(FORBIDDEN_MESSAGE, errorMessage(response));
     }
 
     @Test
@@ -330,6 +329,6 @@ public class SecurityControlTest extends BaseApiControllerTest {
                 null, mintToken(ADMIN_SUB_ID, PLATFORM_TENANT_ID, ADMINISTRATOR.name()));
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode(),
                 "Reason: the bypass needs both the PLATFORM_ADMIN role and the platform tenant");
-        assertTrue(errorMessage(response).contains(TENANT_MISMATCH));
+        assertEquals(FORBIDDEN_MESSAGE, errorMessage(response));
     }
 }

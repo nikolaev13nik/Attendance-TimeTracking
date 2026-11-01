@@ -54,7 +54,8 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
         ResponseEntity<String> response = sendRequestWithUserRole(HttpMethod.PUT, OPEN_URL, 123, tenant,
                 task);
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
-        assertTrue(errorMessage(response).contains("Request was rejected: lack of tenant ID in security context"));
+        assertEquals(FORBIDDEN_MESSAGE, errorMessage(response),
+                "Reason: a token without a tenant gets the shared 403 body");
         long countAfter = sessionAttendanceTimeRepository.count();
         assertEquals(recordCountBefore, sessionAttendanceTimeRepository.count(),
                 String.format("Reason: total count of attendance record should not be changed ,expected:%s ,exist:%s",
@@ -72,7 +73,8 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
         ResponseEntity<String> response = sendRequestWithUserRole(HttpMethod.PUT, OPEN_URL, 2, tenant,
                 task, jwtTokenUserTenant_123);
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
-        assertTrue(errorMessage(response).contains("Request was rejected: JWT's tenant does not match to path"));
+        assertEquals(FORBIDDEN_MESSAGE, errorMessage(response),
+                "Reason: a tenant mismatch gets the shared 403 body");
         long countAfter = sessionAttendanceTimeRepository.count();
         assertEquals(recordCountBefore, sessionAttendanceTimeRepository.count(),
                 String.format("Reason: total count of attendance record should not be changed ,expected:%s ,exist:%s",
@@ -839,7 +841,7 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
 
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode(),
                 "Reason: self-service must not become a way to read a colleague's attendance");
-        assertEquals(ACCESS_DENIED, errorMessage(response));
+        assertEquals(FORBIDDEN_MESSAGE, errorMessage(response));
     }
 
     @Test

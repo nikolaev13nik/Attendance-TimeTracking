@@ -39,11 +39,11 @@ public interface MonthStatisticMapper {
     @Mapping(target = "tenantId", source = "dto.tenantId")
     @Mapping(target = "userId", source = "dto.userId")
     @Mapping(target = "yearMonth", source = "dto.yearMonth")
-    @Mapping(target = "reportUserName", source = "reportRequester.firstName")
-    @Mapping(target = "reportUserLastName", source = "reportRequester.lastName")
-    @Mapping(target = "reportEmail", source = "reportRequester.email")
+    @Mapping(target = "reportUserName", source = "reporterProfile.firstName")
+    @Mapping(target = "reportUserLastName", source = "reporterProfile.lastName")
+    @Mapping(target = "reportEmail", source = "reporterProfile.email")
     @Mapping(target = "userName", expression = "java(fullName(targetUser))")
-    MonthStatisticEvent toEvent(MonthlyUserStatisticInfoDto dto, UserProfileDto reportRequester,
+    MonthStatisticEvent toEvent(MonthlyUserStatisticInfoDto dto, UserProfileDto reporterProfile,
                                 UserProfileDto targetUser);
 
     default String fullName(UserProfileDto profile) {

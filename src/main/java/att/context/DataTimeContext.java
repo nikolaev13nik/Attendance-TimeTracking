@@ -41,6 +41,8 @@ public class DataTimeContext<T> implements BusinessStrategyContext {
     private EditLeaveDayDto editLeaveDayDto;
     private Integer leaveDayId;
     private Integer tenantId;
+    private Integer reporterId;
+    private Integer reporterTenantId;
     @Builder.Default
     private List<DataTime> userWorkSessionList = new ArrayList<>();
     @Builder.Default

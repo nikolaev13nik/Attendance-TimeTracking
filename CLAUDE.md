@@ -163,20 +163,23 @@ caller's JWT** from the `SecurityContextHolder` (so downstream authorization see
 
 There are two production callers, both in `StatisticInfoService` and both **only when `report=true`**:
 
-- `resolveReportRequester` looks up the **report requester** — the caller identified by the JWT `sub`, read
-  through `att.security.JwtClaimsResolver` — with `getUser(homeTenantId, sub)`, where the home tenant is the
-  JWT `tenantId` claim, not the path tenant. For tenant users they are equal; the platform admin lives in
-  tenant 0 while reporting on any tenant.
+- `fetchReporterProfile` (in `fetch`, once per request) looks up the **reporter**, the caller who asked
+  for the report and gets the analysis email, with `getUser(reporterTenantId, reporterId)`. The controller
+  fills `DataTimeContext.reporterId` / `reporterTenantId` from the JWT `sub` and `tenantId` claims through
+  `att.security.CallerResolver`; the service reads them only from the context, never from the JWT. The
+  reporter's tenant is its home tenant, not the path tenant: for tenant users they are equal, while the
+  platform admin lives in tenant 0 and reports on any tenant. A reporter that cannot be resolved (a `sub`
+  that is not a user id) is a 400 `REPORTER_UNRESOLVED_MSG` from `validate`.
 - `resolveTargetUserProfiles` looks up the **reported employees**, so their names can travel on the events:
   `getUser(tenantId, idUser)` for a single-user report, one `getAllUsers(tenantId)` for a tenant-wide one
   (never one lookup per user). The profiles are parked on `StatisticInfoHolder.targetUserProfiles` and
   `MonthStatisticMapper` joins first + last into the event's `userName`.
 
-The resolved requester `UserProfileDto` is parked on `StatisticInfoHolder.reportRequester` and its
+The reporter's `UserProfileDto` is parked on `StatisticInfoHolder.reporterProfile` and its
 name/email are published as the `reportUserName` / `reportUserLastName` / `reportEmail` fields of both
 statistic events, so the downstream AI service knows who to email.
 
-**The two lookups differ in how they fail, on purpose.** The requester lookup runs inside the transactional
+**The two lookups differ in how they fail, on purpose.** The reporter lookup runs inside the transactional
 pipeline and is deliberately *not* wrapped: a failure fails the statistic request, persisting and publishing
 nothing, rather than emitting an event no one can be notified from. A reported employee's name, by contrast,
 is cosmetic — the AI service falls back to printing the user id — so `resolveTargetUserProfiles` catches
@@ -193,16 +196,25 @@ spec. Replace it wholesale whenever Accounting's spec changes; its secured paths
 
 - Every persisted row and most endpoints carry a `tenantId` path/column; `att.dao.*` queries are always
   scoped by tenant + user.
-- `TenantInterceptor` (`att.security`, registered in `WebConfig` for `/attendance/**` only) is a
-  `HandlerInterceptor` that rejects (403) any request whose path `tenantId` doesn't match the JWT's
+- **The shared security code lives in `../attendance-security-common-lib`** (`co.il.attendance.security`,
+  published to GitHub Packages and pulled in as a Maven dependency; bump `attendance-security-common-lib.version`
+  in the pom to take a new release). Its Spring Boot auto-configuration provides `SecurityConstants`,
+  `JwtClaimsResolver`, the `RoleHierarchy` and `JwtAuthenticationConverter` beans, `TenantInterceptor` and the
+  `AccessDeniedHandler`, the same ones Accounting uses. Change that behaviour in the library, not here. Only
+  `att.security.CallerResolver` (the caller's user id and home tenant from the JWT, `null` when missing or
+  not a number) and `SecurityConfiguration` (JWT decoder and URL rules) stay in this repo. Building
+  needs a GitHub token with `read:packages` under server id `github` in `~/.m2/settings.xml`; CI uses its
+  `GITHUB_TOKEN`, and `Dockerfile.dev` gets the settings file as the BuildKit secret `maven_settings`.
+- The shared `TenantInterceptor` (registered for `attendance.security.tenant.path-patterns=/attendance/**`;
+  startup fails if the property is missing) rejects (403) any request whose path `tenantId` doesn't match the JWT's
   `tenantId` claim, and any `/attendance/**` endpoint with no `{tenantId}` in its path (fail closed). The
   only bypass is the platform admin: `ROLE_PLATFORM_ADMIN` **and** JWT tenant
   `SecurityConstants.PLATFORM_TENANT_ID` (0), checked by `JwtClaimsResolver.isPlatformAdmin`. A tenant's
-  `ADMINISTRATOR` manages its own company only; it never bypasses the tenant check. Accounting's
-  `TenantInterceptor` applies the same rule.
+  `ADMINISTRATOR` manages its own company only; it never bypasses the tenant check. Accounting uses the
+  same interceptor.
 - Method-level authorization is additionally enforced with `@PreAuthorize` on controller methods
-  (`att.security.SecurityConstants.SecurityRoles`: `USER`, `ADMINISTRATOR`, `PLATFORM_ADMIN`, with the
-  `RoleHierarchy` bean `PLATFORM_ADMIN > ADMINISTRATOR > USER`), typically
+  (`co.il.attendance.security.SecurityConstants.SecurityRoles`: `USER`, `ADMINISTRATOR`, `PLATFORM_ADMIN`,
+  with the shared `RoleHierarchy` `PLATFORM_ADMIN > ADMINISTRATOR > USER`), typically
   `hasRole(ADMINISTRATOR) || #idUser.toString() == authentication.name` for self-service endpoints.
   Everything else is admin-only.
 - Auth is JWT-only (`SecurityConfiguration`), HMAC-signed (`att.security.jwt.secret`), validated as an
@@ -210,7 +222,7 @@ spec. Replace it wholesale whenever Accounting's spec changes; its secured paths
   issuance happens in this service.
 - Errors surface through `@ResponseStatus` exceptions in `att.exceptions` (`BadRequestException`,
   `NotFoundException`, `InternalApiException`) with messages centralised in `ErrorConstants` /
-  `ErrorProvider`; access-denied responses are JSON via `CustomAccessDeniedHandler`. There is no
+  `ErrorProvider`; every 403 is the shared JSON body with message `"Forbidden"` (tests assert `FORBIDDEN_MESSAGE`). There is no
   `@ControllerAdvice` — add a new `@ResponseStatus` exception instead of a handler class.
 
 ### Persistence

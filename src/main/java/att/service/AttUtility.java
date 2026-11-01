@@ -1,5 +1,7 @@
 package att.service;
 
+import org.springframework.security.core.context.SecurityContextHolder;
+
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.function.Supplier;
@@ -11,7 +13,7 @@ import static att.exceptions.ErrorConstants.LEAVE_DAY_AMOUNT_EXCEEDS_FULL_DAY_MS
 import static att.exceptions.ErrorConstants.PREVIOUS_DAY_REQUIRES_ADMIN_MSG;
 import static att.exceptions.ErrorProvider.leaveDayAmountExceedsFullDay;
 import static att.exceptions.ErrorProvider.workDateMismatch;
-import static att.security.JwtClaimsResolver.isAdministrator;
+import static co.il.attendance.security.JwtClaimsResolver.isAdministrator;
 import static java.util.Objects.isNull;
 import static org.apache.commons.lang3.BooleanUtils.isFalse;
 
@@ -29,7 +31,7 @@ public class AttUtility {
         if (workDate.isAfter(callerToday)) {
             workDateMismatch(String.format(FUTURE_WORK_DATE_MSG, workDate, callerToday));
         }
-        if (workDate.isBefore(callerToday) && isFalse(isAdministrator())) {
+        if (workDate.isBefore(callerToday) && isFalse(isAdministrator(SecurityContextHolder.getContext().getAuthentication()))) {
             workDateMismatch(String.format(PREVIOUS_DAY_REQUIRES_ADMIN_MSG, workDate, callerToday));
         }
     }

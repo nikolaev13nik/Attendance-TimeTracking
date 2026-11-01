@@ -53,10 +53,11 @@ import att.model.MonthStatisticKey;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
-import static att.security.SecurityConstants.PLATFORM_TENANT_ID;
-import static att.security.SecurityConstants.SecurityRoles.ADMINISTRATOR;
-import static att.security.SecurityConstants.SecurityRoles.PLATFORM_ADMIN;
-import static att.security.SecurityConstants.SecurityRoles.USER;
+import static co.il.attendance.security.SecurityConstants.FORBIDDEN;
+import static co.il.attendance.security.SecurityConstants.PLATFORM_TENANT_ID;
+import static co.il.attendance.security.SecurityConstants.SecurityRoles.ADMINISTRATOR;
+import static co.il.attendance.security.SecurityConstants.SecurityRoles.PLATFORM_ADMIN;
+import static co.il.attendance.security.SecurityConstants.SecurityRoles.USER;
 import static java.util.Optional.ofNullable;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -77,7 +78,7 @@ public abstract class BaseApiControllerTest {
     protected ObjectMapper objectMapper;
     protected static final Integer USER_ID = 2;
     protected static final Integer OTHER_USER_ID = 3;
-    protected static final String ACCESS_DENIED = "Access Denied";
+    protected static final String FORBIDDEN_MESSAGE = FORBIDDEN;
     protected static final String BASE_SUFFIX_URL = "/attendance";
     protected static final String TENANT_ID_URL = "/tenant/%s";
     protected static final String EDIT_URL = BASE_SUFFIX_URL + "/sessionChange" + TENANT_ID_URL;
@@ -157,7 +158,7 @@ public abstract class BaseApiControllerTest {
     /**
      * Makes Attendance-Accounting answer the report-requester lookup the statistic pipeline performs.
      */
-    protected void stubReportRequester(int tenantId) {
+    protected void stubReporterProfile(int tenantId) {
         when(accountApi.getUser(tenantId, ADMIN_SUB_ID)).thenReturn(new UserProfileDto()
                 .idUser(ADMIN_SUB_ID)
                 .tenantId(tenantId)
@@ -189,7 +190,7 @@ public abstract class BaseApiControllerTest {
         return "%s%d %s".formatted(TARGET_FIRST_NAME_PREFIX, idUser, TARGET_LAST_NAME);
     }
 
-    protected void assertReportRequester(String reportUserName, String reportUserLastName, String reportEmail) {
+    protected void assertReporterProfile(String reportUserName, String reportUserLastName, String reportEmail) {
         assertEquals(REPORT_FIRST_NAME, reportUserName,
                 "Reason: the requester's first name resolved from Accounting must travel on the event");
         assertEquals(REPORT_LAST_NAME, reportUserLastName,
@@ -205,10 +206,14 @@ public abstract class BaseApiControllerTest {
     private String jwtSecret;
 
     protected String mintToken(Integer sub, Integer tenantId, String... authorities) {
+        return mintToken(sub.toString(), tenantId, authorities);
+    }
+
+    protected String mintToken(String sub, Integer tenantId, String... authorities) {
         SecretKeySpec key = new SecretKeySpec(jwtSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
         Instant now = Instant.now();
         JwtClaimsSet.Builder claims = JwtClaimsSet.builder()
-                .subject(sub.toString())
+                .subject(sub)
                 .issuedAt(now)
                 .expiresAt(now.plusSeconds(3600))
                 .claim("authorities", List.of(authorities));

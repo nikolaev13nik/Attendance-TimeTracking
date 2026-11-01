@@ -18,12 +18,16 @@ import att.exceptions.InternalApiException;
 import att.messaging.dto.MonthStatisticEvent;
 
 import static att.exceptions.ErrorConstants.INCOMPLETE_SESSIONS_MSG;
-import static att.security.SecurityConstants.PLATFORM_TENANT_ID;
+import static att.exceptions.ErrorConstants.REPORTER_UNRESOLVED_MSG;
+import static co.il.attendance.security.SecurityConstants.PLATFORM_TENANT_ID;
+import static co.il.attendance.security.SecurityConstants.SecurityRoles.ADMINISTRATOR;
+import static co.il.attendance.security.SecurityConstants.SecurityRoles.USER;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -45,7 +49,7 @@ class StatisticEventPublishingTest extends BaseApiControllerTest {
     @DisplayName("report=true publishes one trigger event carrying the computed statistic of the reported user")
     void reportTrue_singleUser_publishesExpectedEventTest() {
         closeBlockingSession();
-        stubReportRequester(2);
+        stubReporterProfile(2);
         stubTargetUserProfiles(2);
         // leave days make vacationDays/sickDays non-zero, so the payload assertions below cover
         // every field instead of passing trivially on defaults
@@ -67,7 +71,7 @@ class StatisticEventPublishingTest extends BaseApiControllerTest {
         assertEquals(2, event.getTenantId());
         assertEquals(USER_ID, event.getUserId());
         assertEquals(YearMonth.parse("2024-01"), event.getYearMonth());
-        assertReportRequester(event.getReportUserName(), event.getReportUserLastName(), event.getReportEmail());
+        assertReporterProfile(event.getReportUserName(), event.getReportUserLastName(), event.getReportEmail());
         assertEquals(expectedTargetUserName(USER_ID), event.getUserName(),
                 "Reason: the reported user's name resolved from Accounting must travel on the event, so the "
                         + "analysis email can address the employee by name instead of by id");
@@ -84,7 +88,7 @@ class StatisticEventPublishingTest extends BaseApiControllerTest {
     @DisplayName("report=true requested by the platform admin resolves the requester in the platform tenant")
     void reportTrue_platformAdmin_resolvesRequesterInPlatformTenantTest() {
         closeBlockingSession();
-        stubReportRequester(PLATFORM_TENANT_ID);
+        stubReporterProfile(PLATFORM_TENANT_ID);
         stubTargetUserProfiles(2);
 
         ResponseEntity<String> response = sendRequestWithUserRole(HttpMethod.POST,
@@ -101,7 +105,7 @@ class StatisticEventPublishingTest extends BaseApiControllerTest {
     @DisplayName("report=true with idUser omitted publishes one trigger event per tenant user")
     void reportTrue_allUsers_publishesOnePerUserTest() {
         closeBlockingSession();
-        stubReportRequester(2);
+        stubReporterProfile(2);
         stubTargetUserProfiles(2);
         // OTHER_USER_ID has no seeded work sessions under tenant 2, so it only shows up in
         // resolveTargetUserIds() once it has a leave day - mirrors getMonthStatisticAllUsersTest
@@ -121,7 +125,7 @@ class StatisticEventPublishingTest extends BaseApiControllerTest {
                 .filter(e -> USER_ID.equals(e.getUserId())).findFirst().orElseThrow();
         assertEquals(2, user2Event.getTenantId());
         assertEquals(YearMonth.parse("2024-01"), user2Event.getYearMonth());
-        assertReportRequester(user2Event.getReportUserName(), user2Event.getReportUserLastName(),
+        assertReporterProfile(user2Event.getReportUserName(), user2Event.getReportUserLastName(),
                 user2Event.getReportEmail());
         assertEquals(expectedTargetUserName(USER_ID), user2Event.getUserName(),
                 "Reason: each event must name its own reported user, not the requester");
@@ -130,7 +134,7 @@ class StatisticEventPublishingTest extends BaseApiControllerTest {
                 .filter(e -> OTHER_USER_ID.equals(e.getUserId())).findFirst().orElseThrow();
         assertEquals(2, user3Event.getTenantId());
         assertEquals(YearMonth.parse("2024-01"), user3Event.getYearMonth());
-        assertReportRequester(user3Event.getReportUserName(), user3Event.getReportUserLastName(),
+        assertReporterProfile(user3Event.getReportUserName(), user3Event.getReportUserLastName(),
                 user3Event.getReportEmail());
         assertEquals(expectedTargetUserName(OTHER_USER_ID), user3Event.getUserName(),
                 "Reason: each event must name its own reported user, not the requester");
@@ -149,7 +153,7 @@ class StatisticEventPublishingTest extends BaseApiControllerTest {
     @DisplayName("report=true but the reported user's name cannot be resolved - the event is published without it")
     void reportTrue_targetUserLookupFails_publishesEventWithoutUserNameTest() {
         closeBlockingSession();
-        stubReportRequester(2);
+        stubReporterProfile(2);
         when(accountApi.getUser(2, USER_ID))
                 .thenThrow(new InternalApiException("attendance-accounting call failed: 400 Bad Request", null));
 
@@ -164,7 +168,7 @@ class StatisticEventPublishingTest extends BaseApiControllerTest {
         MonthStatisticEvent event = captor.getValue();
         assertNull(event.getUserName(),
                 "Reason: an unresolved name travels as null, which is what makes the recipient fall back to the id");
-        assertReportRequester(event.getReportUserName(), event.getReportUserLastName(), event.getReportEmail());
+        assertReporterProfile(event.getReportUserName(), event.getReportUserLastName(), event.getReportEmail());
     }
 
     @Test
@@ -182,6 +186,26 @@ class StatisticEventPublishingTest extends BaseApiControllerTest {
 
         assertEquals(countBefore, monthStatisticRepository.count(),
                 "Reason: no statistic row should be persisted for a rejected request");
+        verifyNoInteractions(statisticEventProducer);
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("report=true with a token whose sub is not a user id - 400 and nothing is persisted or published")
+    void reportTrue_unresolvableReporter_rejectsRequestTest() {
+        closeBlockingSession();
+        long countBefore = monthStatisticRepository.count();
+        String token = mintToken("not-a-user-id", 2, USER.name(), ADMINISTRATOR.name());
+
+        ResponseEntity<String> response = sendRequestWithUserRole(HttpMethod.POST,
+                withReport(statistic(STATISTIC_URL, "2024-01", USER_ID), true), null, 2, null, token);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode(),
+                "Reason: without a reporter id there is no one to send the analysis to");
+        assertEquals(REPORTER_UNRESOLVED_MSG, errorMessage(response));
+        assertEquals(countBefore, monthStatisticRepository.count(),
+                "Reason: no statistic row should be persisted for a rejected request");
+        verify(accountApi, never()).getUser(anyInt(), isNull());
         verifyNoInteractions(statisticEventProducer);
     }
 
