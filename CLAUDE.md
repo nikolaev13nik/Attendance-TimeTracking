@@ -231,17 +231,25 @@ spec. Replace it wholesale whenever Accounting's spec changes; its secured paths
   `att.config.WorkTimeConfiguration`, which services inject, and which falls back to 8h for any value it
   cannot read (including minutes of 60 or more); default `8.0`, set in k8s through
   `overtimeDailyThreshold` in `helm/timetracking/values.yaml` → `timetracking-config`). MapStruct mappers (`att.mapper`) do entity/DTO/event mapping.
-- Local/dev runs on a file-based H2 database (`spring.jpa.hibernate.ddl-auto=update`); tests run on an
-  in-memory H2 database with schema/seed data applied via Flyway migrations in
-  `src/test/resources/db.migration` (`V1__schema.sql`, `V2__att_work_sessions_setup.sql`,
-  `V3__att_month_statistic_setup.sql`, `V4__att_user_leave_days_setup.sql`). The `postgresql` dependency
-  is present for production use but no active Postgres datasource is configured in this repo.
-- **There is no production migration tool** — Flyway is `test`-scoped and those migrations are the test
-  schema only. Deployed environments (docker-compose, k8s) point the same `ddl-auto=update` at Postgres,
-  so Hibernate owns the live schema. It can add a column, but it cannot drop or replace a primary key,
-  drop a column, or backfill: a change of that kind has to be applied to the live database by hand before
-  the new image starts, and `helm/timetracking/values.yaml` sets `maxUnavailable: 0`, so old pods overlap
-  new ones during a roll. Plan such a release as a stop, change, deploy — not a rolling update.
+- **Flyway owns the schema everywhere.** `src/main/resources/db/migration` holds the versioned scripts
+  (`V1__schema.sql`: tables, keys and indexes), applied at startup on the local H2 file database, Compose
+  and Kubernetes alike, and recorded in `flyway_schema_history`. Hibernate runs with `ddl-auto=validate`: it
+  never changes the schema, and the service refuses to start when an entity and its table disagree. **Every
+  entity change ships with a new `V<n>__<what>.sql` in the same commit**; never edit a script that has
+  already been applied, add a new one instead. The scripts must run on Postgres; tests run them on H2 in
+  `MODE=PostgreSQL`, which catches most but not all differences.
+- Tests load `classpath:db/migration,classpath:db/testdata`: the real production schema first, then the
+  test-only seed rows in `src/test/resources/db/testdata`, one `V1xx__<table>_setup.sql` per table
+  (`V101__att_work_sessions_setup.sql`, `V102__att_month_statistic_setup.sql`,
+  `V103__att_user_leave_days_setup.sql`). They are numbered from 100 so they run after every production
+  script and never collide with a future one. `@FlywayTest` cleans and re-migrates before a test.
+- An existing database that Flyway did not create (any database from before 1e) has tables but no
+  `flyway_schema_history`, so startup fails with "non-empty schema without schema history table". Drop the
+  service's tables once (or delete the local `./data` H2 files) and let Flyway rebuild them.
+- Local/dev runs on a file-based H2 database (`./data/att`); Compose and Kubernetes override the
+  datasource to Postgres schema `timetracking`. `helm/timetracking/values.yaml` sets `maxUnavailable: 0`,
+  so old pods overlap new ones during a roll: a migration must keep the previous image working (add
+  first, remove in a later release), or the release must be planned as stop, migrate, deploy.
 
 ### Known gaps (spec vs. current code — don't assume these exist)
 
