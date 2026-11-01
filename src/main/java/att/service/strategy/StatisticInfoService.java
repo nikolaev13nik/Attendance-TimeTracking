@@ -139,7 +139,8 @@ public class StatisticInfoService extends BaseGetService<Void> {
     private void resolveReportRequester(DataTimeContext<Void> context) {
         StatisticInfoHolder holder = context.getStatisticInfoHolder();
         if (Boolean.TRUE.equals(holder.getReport()) && holder.getReportRequester() == null) {
-            holder.setReportRequester(accountApi.getUser(context.getTenantId(), JwtClaimsResolver.currentUserId()));
+            holder.setReportRequester(accountApi.getUser(JwtClaimsResolver.currentHomeTenantId(),
+                    JwtClaimsResolver.currentUserId()));
             logger.info("Target reporter is:{}", holder.getReportRequester());
         }
     }

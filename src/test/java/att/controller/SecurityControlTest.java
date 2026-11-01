@@ -18,6 +18,9 @@ import att.model.LeaveDay;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static att.security.SecurityConstants.PLATFORM_TENANT_ID;
+import static att.security.SecurityConstants.SecurityRoles.ADMINISTRATOR;
+import static att.security.SecurityConstants.SecurityRoles.PLATFORM_ADMIN;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 
@@ -268,4 +271,65 @@ public class SecurityControlTest extends BaseApiControllerTest {
                 "Reason: no leave day rows should be removed by a forbidden request");
     }
 
+
+    private static final String TENANT_MISMATCH = "Request was rejected: JWT's tenant does not match to path";
+    private static final int ATTACKER_TENANT_ID = 999;
+
+    @Test
+    @FlywayTest
+    @DisplayName("an administrator of another tenant cannot read tenant 2's sessions - 403")
+    void adminOfOtherTenantCannotReadTest() {
+        ResponseEntity<String> response = sendRequestWithUserRole(HttpMethod.GET, range(RANGE_RECORDS_URL, USER_ID), null, 2,
+                null, adminToken(ATTACKER_TENANT_ID));
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode(),
+                "Reason: ADMINISTRATOR manages its own company only, it never bypasses the tenant check");
+        assertTrue(errorMessage(response).contains(TENANT_MISMATCH));
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("an administrator of another tenant cannot edit tenant 2's session - 403 and the row is unchanged")
+    void adminOfOtherTenantCannotEditTest() {
+        DataTime before = sessionAttendanceTimeRepository.findById(SEEDED_FINISHED_ID).orElseThrow();
+        OffsetDateTime newFinishTime = OffsetDateTime.parse("2024-01-03T18:00:00Z");
+        ResponseEntity<String> response = sendRequestWithUserRole(HttpMethod.POST, EDIT_URL, null, 2,
+                createEditDataTimeUserDto(SEEDED_FINISHED_ID, null, newFinishTime), adminToken(ATTACKER_TENANT_ID));
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+        assertTrue(errorMessage(response).contains(TENANT_MISMATCH));
+        DataTime after = sessionAttendanceTimeRepository.findById(SEEDED_FINISHED_ID).orElseThrow();
+        assertEquals(before.getCloseSessionDate(), after.getCloseSessionDate(),
+                "Reason: a rejected cross-tenant edit must leave the session untouched");
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("the platform admin (PLATFORM_ADMIN in tenant 0) may read any tenant - 200")
+    void platformAdminReadsAnyTenantTest() {
+        ResponseEntity<String> response = sendRequestWithUserRole(HttpMethod.GET, range(RANGE_RECORDS_URL, USER_ID), null, 2,
+                null, platformAdminToken());
+        assertEquals(HttpStatus.OK, response.getStatusCode(),
+                "Reason: the platform admin is the only caller allowed to name a tenant other than its own");
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("PLATFORM_ADMIN outside the platform tenant gets no bypass - 403")
+    void platformAdminRoleOutsidePlatformTenantTest() {
+        ResponseEntity<String> response = sendRequestWithUserRole(HttpMethod.GET, range(RANGE_RECORDS_URL, USER_ID), null, 2,
+                null, mintToken(ADMIN_SUB_ID, ATTACKER_TENANT_ID, PLATFORM_ADMIN.name()));
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode(),
+                "Reason: the bypass needs both the PLATFORM_ADMIN role and the platform tenant");
+        assertTrue(errorMessage(response).contains(TENANT_MISMATCH));
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("an administrator in the platform tenant without PLATFORM_ADMIN gets no bypass - 403")
+    void platformTenantWithoutPlatformRoleTest() {
+        ResponseEntity<String> response = sendRequestWithUserRole(HttpMethod.GET, range(RANGE_RECORDS_URL, USER_ID), null, 2,
+                null, mintToken(ADMIN_SUB_ID, PLATFORM_TENANT_ID, ADMINISTRATOR.name()));
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode(),
+                "Reason: the bypass needs both the PLATFORM_ADMIN role and the platform tenant");
+        assertTrue(errorMessage(response).contains(TENANT_MISMATCH));
+    }
 }

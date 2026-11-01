@@ -23,9 +23,48 @@ securityDefinitions:
     description: JWT. Format `Bearer {token}` (obtained from POST /account/login).
 
 security:
-  - bearerAuth: [ ]
+  - bearerAuth: []
+
+parameters:
+
+  TenantIdPath:
+    name: tenantId
+    in: path
+    description: |
+      Tenant to act on. It must equal the caller's JWT tenant (403 otherwise), except for the platform admin,
+      whose JWT tenant is 0 and who may name any tenant.
+    required: true
+    type: integer
+    format: int32
+    minimum: 0
 
 paths:
+
+  /account/login:
+    post:
+      summary: Authenticates a user and issues a JWT
+      operationId: login
+      tags:
+        - Account
+      security: []
+      parameters:
+        - name: LoginRequestDto
+          in: body
+          description: |
+            Credentials of the user and the organization the user belongs to
+          required: false
+          schema:
+            $ref: '#/definitions/LoginRequestDto'
+      responses:
+        '200':
+          description: |
+            Issued token and the profile of the authenticated user
+          schema:
+            $ref: '#/definitions/LoginResponseDto'
+        '401':
+          $ref: '#/responses/401-Unauthorized'
+        '500':
+          $ref: '#/responses/500-InternalServerError'
 
   /account/user:
     post:
@@ -33,7 +72,7 @@ paths:
       operationId: register
       tags:
         - Account
-      security: [ ]
+      security: []
       parameters:
         - name: UserRegisterDto
           in: body
@@ -55,13 +94,14 @@ paths:
         '500':
           $ref: '#/responses/500-InternalServerError'
 
-  /account/user/{idUser}:
+  /account/tenant/{tenantId}/user/{idUser}:
     delete:
       summary: Removes a user
       operationId: removeUser
       tags:
         - Account
       parameters:
+        - $ref: '#/parameters/TenantIdPath'
         - name: idUser
           in: path
           description: |
@@ -82,16 +122,19 @@ paths:
           $ref: '#/responses/401-Unauthorized'
         '403':
           $ref: '#/responses/403-Forbidden'
+        '404':
+          $ref: '#/responses/404-NotFound'
         '500':
           $ref: '#/responses/500-InternalServerError'
 
-  /account/user/password/{idUser}:
+  /account/tenant/{tenantId}/user/password/{idUser}:
     put:
       summary: Updates a user's profile and/or password
       operationId: editUser
       tags:
         - Account
       parameters:
+        - $ref: '#/parameters/TenantIdPath'
         - name: idUser
           in: path
           description: |
@@ -119,16 +162,19 @@ paths:
           $ref: '#/responses/401-Unauthorized'
         '403':
           $ref: '#/responses/403-Forbidden'
+        '404':
+          $ref: '#/responses/404-NotFound'
         '500':
           $ref: '#/responses/500-InternalServerError'
 
-  /account/user/{idUser}/role/{role}:
+  /account/tenant/{tenantId}/user/{idUser}/role/{role}:
     post:
       summary: Adds a role to a user
       operationId: addRole
       tags:
         - Account
       parameters:
+        - $ref: '#/parameters/TenantIdPath'
         - name: idUser
           in: path
           description: |
@@ -155,6 +201,8 @@ paths:
           $ref: '#/responses/401-Unauthorized'
         '403':
           $ref: '#/responses/403-Forbidden'
+        '404':
+          $ref: '#/responses/404-NotFound'
         '500':
           $ref: '#/responses/500-InternalServerError'
 
@@ -164,6 +212,7 @@ paths:
       tags:
         - Account
       parameters:
+        - $ref: '#/parameters/TenantIdPath'
         - name: idUser
           in: path
           description: |
@@ -190,33 +239,61 @@ paths:
           $ref: '#/responses/401-Unauthorized'
         '403':
           $ref: '#/responses/403-Forbidden'
+        '404':
+          $ref: '#/responses/404-NotFound'
         '500':
           $ref: '#/responses/500-InternalServerError'
 
-  /account/users:
+  /account/tenant/{tenantId}/users:
     get:
-      summary: Lists all users
+      summary: Lists the users of one tenant
       operationId: getAllUsers
       tags:
         - Account
       parameters:
-        - name: tenantId
-          in: query
-          description: |
-            When provided, only users belonging to this tenant are returned
-          required: false
-          type: integer
-          format: int32
+        - $ref: '#/parameters/TenantIdPath'
       responses:
         '200':
           description: |
-            All user profiles, or users of the given tenant when tenantId is provided
+            User profiles of the tenant
           schema:
             type: array
             items:
               $ref: '#/definitions/UserProfileDto'
+        '400':
+          $ref: '#/responses/400-BadRequest'
         '401':
           $ref: '#/responses/401-Unauthorized'
+        '403':
+          $ref: '#/responses/403-Forbidden'
+        '500':
+          $ref: '#/responses/500-InternalServerError'
+
+  /account/tenant/add:
+    post:
+      summary: Adds a tenant mapping
+      operationId: addTenant
+      tags:
+        - Account
+      security: [ ]
+      parameters:
+        - name: TenantAddDto
+          in: body
+          description: |
+            Details of the tenant to add
+          required: true
+          schema:
+            $ref: '#/definitions/TenantAddDto'
+      responses:
+        '201':
+          description: |
+            Created tenant mapping
+          schema:
+            $ref: '#/definitions/TenantMappingDto'
+        '400':
+          $ref: '#/responses/400-BadRequest'
+        '409':
+          $ref: '#/responses/409-Conflict'
         '500':
           $ref: '#/responses/500-InternalServerError'
 
@@ -227,14 +304,7 @@ paths:
       tags:
         - Account
       parameters:
-        - name: tenantId
-          in: path
-          description: |
-            Identifier of the tenant the user belongs to
-          required: true
-          type: integer
-          format: int32
-          minimum: 1
+        - $ref: '#/parameters/TenantIdPath'
         - name: idUser
           in: path
           description: |
@@ -253,11 +323,60 @@ paths:
           $ref: '#/responses/400-BadRequest'
         '401':
           $ref: '#/responses/401-Unauthorized'
+        '403':
+          $ref: '#/responses/403-Forbidden'
+        '404':
+          $ref: '#/responses/404-NotFound'
         '500':
           $ref: '#/responses/500-InternalServerError'
 
 
 definitions:
+
+  LoginRequestDto:
+    type: object
+    description: |
+      Input for login; the organization is given either by tenantId or by companyName
+    properties:
+      idUser:
+        description: |
+          Unique identifier of the user
+        type: integer
+        format: int32
+      password:
+        description: |
+          Password of the user
+        type: string
+      tenantId:
+        description: |
+          Identifier of the tenant the user belongs to
+        type: integer
+        format: int32
+      companyName:
+        description: |
+          Name of the organization the user belongs to, used when tenantId is not given
+        type: string
+
+  LoginResponseDto:
+    type: object
+    description: |
+      Issued token and the profile of the authenticated user
+    properties:
+      token:
+        description: |
+          Signed JWT
+        type: string
+      tokenType:
+        description: |
+          Token type, always Bearer
+        type: string
+      expiresIn:
+        description: |
+          Token lifetime in seconds
+        type: integer
+        format: int64
+      profile:
+        $ref: '#/definitions/UserProfileDto'
 
   UserRegisterDto:
     type: object
@@ -299,6 +418,75 @@ definitions:
       - password
       - email
       - tenantId
+
+  TenantAddDto:
+    type: object
+    description: |
+      Input for registering an organization. The identifier is assigned by the service
+      and returned on the response; it is not supplied by the caller.
+    properties:
+      companyName:
+        description: |
+          Name of the organization. Must not already be registered
+        type: string
+        minLength: 1
+        maxLength: 255
+      contactName:
+        description: |
+          Name of the person responsible for the organization
+        type: string
+        minLength: 1
+        maxLength: 255
+      phone:
+        description: |
+          Contact telephone number of the organization
+        type: string
+        minLength: 1
+        maxLength: 40
+      email:
+        description: |
+          Contact email address of the organization
+        type: string
+        format: email
+        maxLength: 255
+    required:
+      - companyName
+      - contactName
+      - phone
+      - email
+
+  TenantMappingDto:
+    type: object
+    description: |
+      Organization resource returned by the tenant operations
+    properties:
+      tenantId:
+        description: |
+          Identifier assigned to the organization by the service
+        type: integer
+        format: int32
+      companyName:
+        description: |
+          Name of the organization
+        type: string
+      contactName:
+        description: |
+          Name of the person responsible for the organization
+        type: string
+      phone:
+        description: |
+          Contact telephone number of the organization
+        type: string
+      status:
+        description: |
+          Lifecycle status of the organization
+        type: string
+        maxLength: 15
+      email:
+        description: |
+          Contact email address of the organization
+        type: string
+        format: email
 
   UserEditDto:
     type: object
@@ -351,9 +539,9 @@ definitions:
           Identifier of the tenant the user belongs to
         type: integer
         format: int32
-      tenantName:
+      companyName:
         description: |
-          Display name of the tenant the user belongs to
+          Name of the organization the user belongs to
         type: string
       roles:
         description: |
@@ -421,6 +609,12 @@ responses:
   403-Forbidden:
     description: |
       Forbidden - the authenticated user is not allowed to perform this operation.
+    schema:
+      $ref: '#/definitions/ApiError'
+
+  404-NotFound:
+    description: |
+      Not Found - the user does not exist in the target tenant.
     schema:
       $ref: '#/definitions/ApiError'
 

@@ -12,6 +12,8 @@ import att.exceptions.BadRequestException;
 
 import static att.exceptions.ErrorConstants.REPORT_REQUESTER_UNRESOLVED_MSG;
 import static att.security.SecurityConstants.ADMINISTRATOR_AUTHORITY;
+import static att.security.SecurityConstants.PLATFORM_ADMIN_AUTHORITY;
+import static att.security.SecurityConstants.PLATFORM_TENANT_ID;
 
 /**
  * Single place that reads claims off the caller's JWT. Both the tenant check and any service needing the calling
@@ -46,6 +48,22 @@ public final class JwtClaimsResolver {
         } catch (NumberFormatException e) {
             throw new BadRequestException(REPORT_REQUESTER_UNRESOLVED_MSG);
         }
+    }
+
+    public static Integer currentHomeTenantId() {
+        String tenantId = currentTenantId(SecurityContextHolder.getContext().getAuthentication());
+        try {
+            return Integer.valueOf(tenantId);
+        } catch (NumberFormatException e) {
+            throw new BadRequestException(REPORT_REQUESTER_UNRESOLVED_MSG);
+        }
+    }
+
+    public static boolean isPlatformAdmin(Authentication auth) {
+        return auth != null && PLATFORM_TENANT_ID.toString().equals(currentTenantId(auth))
+                && auth.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch(PLATFORM_ADMIN_AUTHORITY::equals);
     }
 
     public static boolean isAdministrator() {

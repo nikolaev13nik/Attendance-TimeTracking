@@ -164,7 +164,9 @@ caller's JWT** from the `SecurityContextHolder` (so downstream authorization see
 There are two production callers, both in `StatisticInfoService` and both **only when `report=true`**:
 
 - `resolveReportRequester` looks up the **report requester** — the caller identified by the JWT `sub`, read
-  through `att.security.JwtClaimsResolver` — with `getUser(pathTenantId, sub)`.
+  through `att.security.JwtClaimsResolver` — with `getUser(homeTenantId, sub)`, where the home tenant is the
+  JWT `tenantId` claim, not the path tenant. For tenant users they are equal; the platform admin lives in
+  tenant 0 while reporting on any tenant.
 - `resolveTargetUserProfiles` looks up the **reported employees**, so their names can travel on the events:
   `getUser(tenantId, idUser)` for a single-user report, one `getAllUsers(tenantId)` for a tenant-wide one
   (never one lookup per user). The profiles are parked on `StatisticInfoHolder.targetUserProfiles` and
@@ -181,16 +183,23 @@ is cosmetic — the AI service falls back to printing the user id — so `resolv
 `RuntimeException`, warns and leaves `userName` null. Do not "fix" that by letting it propagate: it would
 turn an Accounting blip into a lost analysis after the statistics were already computed.
 
-Beware that Accounting answers an unknown user/tenant pair with **400, not 404**, so a `sub` that is not a
-member of the path tenant surfaces as a 500 `InternalApiException`.
+Accounting answers an unknown user/tenant pair with 404, which the client maps to `NotFoundException`.
+
+`src/main/resources/swagger-source/attendance-accounting-account.yaml` is a verbatim copy of Accounting's
+spec. Replace it wholesale whenever Accounting's spec changes; its secured paths all live under
+`/account/tenant/{tenantId}/...`.
 
 ### Multi-tenancy & authorization
 
 - Every persisted row and most endpoints carry a `tenantId` path/column; `att.dao.*` queries are always
   scoped by tenant + user.
-- `TenantInterceptor` (`att.security`, registered in `WebConfig`) is a `HandlerInterceptor` that rejects
-  (403) any request whose path `tenantId` doesn't match the JWT's `tenantId` claim, unless the caller has
-  `ROLE_ADMINISTRATOR`.
+- `TenantInterceptor` (`att.security`, registered in `WebConfig` for `/attendance/**` only) is a
+  `HandlerInterceptor` that rejects (403) any request whose path `tenantId` doesn't match the JWT's
+  `tenantId` claim, and any `/attendance/**` endpoint with no `{tenantId}` in its path (fail closed). The
+  only bypass is the platform admin: `ROLE_PLATFORM_ADMIN` **and** JWT tenant
+  `SecurityConstants.PLATFORM_TENANT_ID` (0), checked by `JwtClaimsResolver.isPlatformAdmin`. A tenant's
+  `ADMINISTRATOR` manages its own company only; it never bypasses the tenant check. Accounting's
+  `TenantInterceptor` applies the same rule.
 - Method-level authorization is additionally enforced with `@PreAuthorize` on controller methods
   (`att.security.SecurityConstants.SecurityRoles`: `USER`, `ADMINISTRATOR`, `PLATFORM_ADMIN`, with the
   `RoleHierarchy` bean `PLATFORM_ADMIN > ADMINISTRATOR > USER`), typically
@@ -254,8 +263,11 @@ hitting the actual HTTP endpoint over `RestTemplate`, exercising the whole pipel
 chain, tenant interceptor, strategy service, real DB) exactly as production traffic would.
 
 Tests extend `BaseApiControllerTest` (`src/test/java/att/controller`), which boots the full app on a
-random port and drives it over a real `RestTemplate` using pre-built JWTs for admin/user roles
-(`jwtTokenAdministrator`, `jwtTokenUser`, plus a tenant-scoped one). Reuse its `sendRequestWithAdmin` /
+random port and drives it over a real `RestTemplate`. Admin calls mint a real JWT signed with the test
+secret: `sendRequestWithAdmin` uses `adminToken(tenantId)`, an administrator of the tenant in the URL;
+`platformAdminToken()` and `mintToken(sub, tenantId, authorities...)` cover the platform admin and odd
+claim combinations. The pre-built user tokens (`jwtTokenUser`, `jwtTokenSeededUser`,
+`jwtTokenUserTenant_123`) remain for user-role cases. Reuse its `sendRequestWithAdmin` /
 `sendRequestWithUserRole` helpers, the URL/`range(...)`/`statistic(...)` builders, the DTO factory methods
 and the seeded IDs/date constants (`SEEDED_OPEN_ID`, `RANGE_START`/`RANGE_END`, `SEEDED_STAT_*`) rather
 than re-deriving fixtures — the seed data comes from the Flyway migrations, and each test method that

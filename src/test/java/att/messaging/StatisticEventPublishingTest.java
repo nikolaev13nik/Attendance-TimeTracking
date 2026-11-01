@@ -18,6 +18,7 @@ import att.exceptions.InternalApiException;
 import att.messaging.dto.MonthStatisticEvent;
 
 import static att.exceptions.ErrorConstants.INCOMPLETE_SESSIONS_MSG;
+import static att.security.SecurityConstants.PLATFORM_TENANT_ID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
@@ -76,6 +77,23 @@ class StatisticEventPublishingTest extends BaseApiControllerTest {
         verify(accountApi).getUser(2, USER_ID);
         verify(accountApi, never()).getAllUsers(anyInt());
         verify(statisticEventProducer, never()).sendUserStatisticAnalysisRequest(any(), any());
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("report=true requested by the platform admin resolves the requester in the platform tenant")
+    void reportTrue_platformAdmin_resolvesRequesterInPlatformTenantTest() {
+        closeBlockingSession();
+        stubReportRequester(PLATFORM_TENANT_ID);
+        stubTargetUserProfiles(2);
+
+        ResponseEntity<String> response = sendRequestWithUserRole(HttpMethod.POST,
+                withReport(statistic(STATISTIC_URL, "2024-01", USER_ID), true), null, 2, null, platformAdminToken());
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+
+        verify(accountApi).getUser(PLATFORM_TENANT_ID, ADMIN_SUB_ID);
+        verify(accountApi, never()).getUser(2, ADMIN_SUB_ID);
+        verify(statisticEventProducer).sendMonthStatistic(eq(USER_ID), any());
     }
 
     @Test

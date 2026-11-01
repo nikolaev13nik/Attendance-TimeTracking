@@ -11,6 +11,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Set;
 
 import att.client.accounting.api.AccountApi;
@@ -33,6 +34,7 @@ class AccountingClientConfigurationTest {
     private static final Integer ID_USER = 42;
     private static final Integer TENANT_ID = 100;
     private static final String USER_PATH = "/account/tenant/" + TENANT_ID + "/userId/" + ID_USER;
+    private static final String USERS_PATH = "/account/tenant/" + TENANT_ID + "/users";
     private static final String TOKEN_VALUE = "caller-jwt-token";
     @RegisterExtension
     static WireMockExtension wireMock = WireMockExtension.newInstance().options(
@@ -89,16 +91,26 @@ class AccountingClientConfigurationTest {
         assertThrows(NotFoundException.class, () -> buildAccountApiPointedAtWireMock().getUser(TENANT_ID, ID_USER));
     }
 
-    /**
-     * Accounting answers an unknown user/tenant pair with 400, not 404, so "no such user" reaches the caller as
-     * {@link InternalApiException} - which is why a failed report-requester lookup surfaces as a 500.
-     */
     @Test
     void getUser_unknownUserUpstream_throwsInternalApiException() {
         authenticateAs(TOKEN_VALUE);
         wireMock.stubFor(get(urlEqualTo(USER_PATH)).willReturn(aResponse().withStatus(400)));
 
         assertThrows(InternalApiException.class, () -> buildAccountApiPointedAtWireMock().getUser(TENANT_ID, ID_USER));
+    }
+
+    @Test
+    void getAllUsers_callsTenantScopedPath_andParsesResponse() {
+        authenticateAs(TOKEN_VALUE);
+        wireMock.stubFor(get(urlEqualTo(USERS_PATH)).willReturn(okJson(
+                "[{\"idUser\":42,\"firstName\":\"Jane\",\"lastName\":\"Doe\",\"tenantId\":100,\"roles\":[\"USER\"]}]")));
+
+        List<UserProfileDto> result = buildAccountApiPointedAtWireMock().getAllUsers(TENANT_ID);
+
+        assertEquals(1, result.size());
+        assertEquals(ID_USER, result.get(0).getIdUser());
+        wireMock.verify(getRequestedFor(urlEqualTo(USERS_PATH))
+                .withHeader("Authorization", equalTo("Bearer " + TOKEN_VALUE)));
     }
 
     @Test

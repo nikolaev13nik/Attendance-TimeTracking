@@ -2,6 +2,7 @@ package att.controller;
 
 import org.flywaydb.test.FlywayTestExecutionListener;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpEntity;
@@ -10,16 +11,27 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.ClientHttpResponse;
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.JwsHeader;
+import org.springframework.security.oauth2.jwt.JwtClaimsSet;
+import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
+import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.test.context.TestExecutionListeners;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.client.DefaultResponseErrorHandler;
 import org.springframework.web.client.RestTemplate;
 
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+
+import javax.crypto.spec.SecretKeySpec;
+
+import com.nimbusds.jose.jwk.source.ImmutableSecret;
 
 import att.client.accounting.api.AccountApi;
 import att.client.accounting.dto.UserProfileDto;
@@ -41,6 +53,10 @@ import att.model.MonthStatisticKey;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import static att.security.SecurityConstants.PLATFORM_TENANT_ID;
+import static att.security.SecurityConstants.SecurityRoles.ADMINISTRATOR;
+import static att.security.SecurityConstants.SecurityRoles.PLATFORM_ADMIN;
+import static att.security.SecurityConstants.SecurityRoles.USER;
 import static java.util.Optional.ofNullable;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -126,7 +142,7 @@ public abstract class BaseApiControllerTest {
     protected StatisticEventProducer statisticEventProducer;
 
     /**
-     * The {@code sub} claim carried by {@link #jwtTokenAdministrator} - the report requester in these tests.
+     * The {@code sub} claim carried by {@link #adminToken(int)} - the report requester in these tests.
      */
     protected static final Integer ADMIN_SUB_ID = 123456789;
     protected static final String REPORT_FIRST_NAME = "John";
@@ -185,7 +201,33 @@ public abstract class BaseApiControllerTest {
 
     private final RestTemplate rest = createRestTemplate();
 
-    protected String jwtTokenAdministrator = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkiLCJleHAiOjIxMDEwMzI4MzEsImlhdCI6MTc4NTY3MjgzMSwiYXV0aG9yaXRpZXMiOlsiQURNSU4iLCJBRE1JTklTVFJBVE9SIiwiTU9ERVJBVE9SIiwiVVNFUiIsIkZBQ1RPUl9QQVNTV09SRCJdfQ.7v9mluTswU2F7GRdG5xKQxStTGn5bEy_5Dn74FYqShU";
+    @Value("${att.security.jwt.secret}")
+    private String jwtSecret;
+
+    protected String mintToken(Integer sub, Integer tenantId, String... authorities) {
+        SecretKeySpec key = new SecretKeySpec(jwtSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+        Instant now = Instant.now();
+        JwtClaimsSet.Builder claims = JwtClaimsSet.builder()
+                .subject(sub.toString())
+                .issuedAt(now)
+                .expiresAt(now.plusSeconds(3600))
+                .claim("authorities", List.of(authorities));
+        if (tenantId != null) {
+            claims.claim("tenantId", tenantId);
+        }
+        return new NimbusJwtEncoder(new ImmutableSecret<>(key))
+                .encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(), claims.build()))
+                .getTokenValue();
+    }
+
+    protected String adminToken(int tenantId) {
+        return mintToken(ADMIN_SUB_ID, tenantId, USER.name(), ADMINISTRATOR.name());
+    }
+
+    protected String platformAdminToken() {
+        return mintToken(ADMIN_SUB_ID, PLATFORM_TENANT_ID, PLATFORM_ADMIN.name());
+    }
+
     protected String jwtTokenUser = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjMiLCJleHAiOjIxMDEwMzI3MDIsImlhdCI6MTc4NTY3MjcwMiwiYXV0aG9yaXRpZXMiOlsiVVNFUiIsIkZBQ1RPUl9QQVNTV09SRCJdfQ.x_Jobfo63CL4eUxU6lBO11SyMG7ZdQeO5Z3S5wyjbLY";
     /**
      * The seeded employee: sub 2 inside tenant 2, which is where the session fixtures live.
@@ -206,23 +248,23 @@ public abstract class BaseApiControllerTest {
             return rt;
     }
 
-    private HttpHeaders getHeaders(String jwtTokenAdministrator) {
+    private HttpHeaders getHeaders(String jwtToken) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setBearerAuth(jwtTokenAdministrator);
+        headers.setBearerAuth(jwtToken);
         return headers;
     }
 
     protected ResponseEntity<String> sendRequestWithAdmin(HttpMethod method, String path,
                                                           Integer userId, int tenantId, Object requestBody) {
-        return sendRequest(method, buildUrl(path, userId, tenantId), requestBody, getHeaders(jwtTokenAdministrator));
+        return sendRequest(method, buildUrl(path, userId, tenantId), requestBody, getHeaders(adminToken(tenantId)));
     }
 
     protected ResponseEntity<String> sendDeleteRequestWithAdmin(HttpMethod method, String path,
                                                                 Integer sessionId, int tenantId, Object requestBody) {
 
         return sendRequest(method, String.format(path, tenantId, sessionId), requestBody,
-                getHeaders(jwtTokenAdministrator));
+                getHeaders(adminToken(tenantId)));
     }
 
     private String buildUrl(String path, Integer userId, Integer tenantId) {
