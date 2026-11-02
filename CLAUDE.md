@@ -229,6 +229,18 @@ spec. Replace it wholesale whenever Accounting's spec changes; its secured paths
   `ErrorProvider`; every 403 is the shared JSON body with message `"Forbidden"` (tests assert `FORBIDDEN_MESSAGE`). There is no
   `@ControllerAdvice` — add a new `@ResponseStatus` exception instead of a handler class.
 
+### Logging
+
+Every log line carries the MDC from the shared library (`traceId`, `userId`, `tenantId`, `pathTenantId`)
+plus `targetUserId`, the context's `idUser`. Locally it is text, `[traceId] [user=… tenant=… target=…]`
+(`logging.pattern.correlation`); in Kubernetes the Helm chart sets `LOGGING_STRUCTURED_FORMAT_CONSOLE`
+(`logFormat` in `values.yaml`, `logstash`) and renames `level` to `severity` for GKE.
+`DataTimeServiceBase.executeWithoutTransactional` writes one line per strategy run: `completed` at INFO for
+every strategy, reads included; `rejected: <reason>` at WARN for a 4xx
+`@ResponseStatus` exception; `failed` with the stack trace at ERROR otherwise. Steps that one strategy calls
+on another (`countWorkedDaysService.fetch(...)`) write nothing of their own. Known gap: `StatisticInfoService`
+still logs the reporter profile including its email.
+
 ### Persistence
 
 - Entities (`att.model`) ↔ tables: `DataTime` → `att_work_sessions` (one row per open/close session),

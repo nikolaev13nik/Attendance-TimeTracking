@@ -36,6 +36,8 @@ overtimeDailyThreshold: "8.00"
 
 javaToolOptions: "-XX:MaxRAMPercentage=75"
 
+logFormat: logstash
+
 resources:
   requests:
     memory: 512Mi
