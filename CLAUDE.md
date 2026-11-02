@@ -240,8 +240,8 @@ plus `targetUserId`, the context's `idUser`. Locally it is text, `[traceId] [use
 `DataTimeServiceBase.executeWithoutTransactional` writes one line per strategy run: `completed` at INFO for
 every strategy, reads included; `rejected: <reason>` at WARN for a 4xx
 `@ResponseStatus` exception; `failed` with the stack trace at ERROR otherwise. Steps that one strategy calls
-on another (`countWorkedDaysService.fetch(...)`) write nothing of their own. Known gap: `StatisticInfoService`
-still logs the reporter profile including its email. Kafka carries the trace too:
+on another (`countWorkedDaysService.fetch(...)`) write nothing of their own. Log ids, never names or emails:
+the reporter is logged as `Reporter <id> of tenant <id> resolved`. Kafka carries the trace too:
 `spring.cloud.stream.kafka.binder.enable-observation=true` (`async-messages.yml`) adds `traceparent` to every
 produced record and continues it in the consumer, and `StatisticEnrichmentConsumer` puts the event's
 `tenantId` and `userId` (as `targetUserId`) into the MDC with `LogContextScope`, since a consumer has no HTTP

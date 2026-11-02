@@ -3,7 +3,10 @@ package att.messaging;
 import org.flywaydb.test.annotation.FlywayTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +26,8 @@ import static co.il.attendance.security.SecurityConstants.PLATFORM_TENANT_ID;
 import static co.il.attendance.security.SecurityConstants.SecurityRoles.ADMINISTRATOR;
 import static co.il.attendance.security.SecurityConstants.SecurityRoles.USER;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -34,6 +39,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(OutputCaptureExtension.class)
 @DisplayName("Statistic API with report=true publishes the expected month-statistic event")
 class StatisticEventPublishingTest extends BaseApiControllerTest {
 
@@ -226,5 +232,22 @@ class StatisticEventPublishingTest extends BaseApiControllerTest {
         assertEquals(countBefore, monthStatisticRepository.count(),
                 "Reason: the lookup happens inside the transactional pipeline, so the statistic row rolls back");
         verifyNoInteractions(statisticEventProducer);
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("report=true logs the resolved reporter by id only, never the reporter's email")
+    void reportTrue_reporterIsLoggedWithoutEmailTest(CapturedOutput output) {
+        closeBlockingSession();
+        stubReporterProfile(2);
+        stubTargetUserProfiles(2);
+
+        ResponseEntity<String> response = sendRequestWithAdmin(HttpMethod.POST,
+                withReport(statistic(STATISTIC_URL, "2024-01", USER_ID), true), null, 2, null);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertTrue(output.getOut().contains("Reporter " + ADMIN_SUB_ID + " of tenant 2 resolved"),
+                "Reason: the log names the reporter by id");
+        assertFalse(output.getOut().contains(REPORT_EMAIL), "Reason: the reporter's email is personal data");
     }
 }

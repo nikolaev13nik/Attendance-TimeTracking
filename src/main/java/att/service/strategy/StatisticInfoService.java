@@ -145,7 +145,7 @@ public class StatisticInfoService extends BaseGetService<Void> {
         if (isReportRequested(context) && hasReporter(context)) {
             StatisticInfoHolder holder = context.getStatisticInfoHolder();
             holder.setReporterProfile(accountApi.getUser(context.getReporterTenantId(), context.getReporterId()));
-            logger.info("Reporter profile is:{}", holder.getReporterProfile());
+            logger.info("Reporter {} of tenant {} resolved", context.getReporterId(), context.getReporterTenantId());
         }
     }
 
