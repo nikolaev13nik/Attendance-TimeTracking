@@ -3,8 +3,12 @@ package att.messaging;
 import org.flywaydb.test.annotation.FlywayTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
 
@@ -22,6 +26,8 @@ import att.messaging.dto.UserStatisticHistoryEntryDto;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validator;
 
+import static co.il.attendance.logging.LogContext.TARGET_USER_ID;
+import static co.il.attendance.logging.LogContext.TENANT_ID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -31,6 +37,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+@ExtendWith(OutputCaptureExtension.class)
 @DisplayName("monthStatisticEnrichment consumer: enriches a MonthStatisticEvent and forwards it to the AI service")
 class StatisticEnrichmentConsumerTest extends BaseApiControllerTest {
 
@@ -161,5 +168,18 @@ class StatisticEnrichmentConsumerTest extends BaseApiControllerTest {
                 "Reason: a message missing the mandatory userId must be rejected, not silently dropped");
 
         verifyNoInteractions(statisticEventProducer);
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("The consumer logs with the event's tenant and user, and leaves no log context behind")
+    void enrichment_logsWithEventContextTest(CapturedOutput output) {
+        sendMsToEnrichConsumer();
+
+        String line = output.getOut().lines().filter(l -> l.contains("Reported Email is found")).findFirst().orElse("");
+        assertTrue(line.contains("tenant=2 target=" + SEEDED_STAT_USER_ID + "]"),
+                "Reason: a consumer has no HTTP request, so the event names the tenant and user, line: " + line);
+        assertNull(MDC.get(TENANT_ID), "Reason: the next message on this thread must not inherit the tenant");
+        assertNull(MDC.get(TARGET_USER_ID), "Reason: the next message on this thread must not inherit the user");
     }
 }

@@ -17,11 +17,14 @@ import att.mapper.MonthStatisticMapper;
 import att.messaging.dto.MonthStatisticEvent;
 import att.messaging.producer.StatisticEventProducer;
 import att.model.MonthStatistic;
+import co.il.attendance.logging.LogContextScope;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
 
+import static co.il.attendance.logging.LogContext.TARGET_USER_ID;
+import static co.il.attendance.logging.LogContext.TENANT_ID;
 import static java.util.Optional.ofNullable;
 
 @Configuration
@@ -42,17 +45,21 @@ public class StatisticEnrichmentConsumer {
 
     private void monthStatisticEnrichmentHandler(Message<MonthStatisticEvent> message) {
         MonthStatisticEvent event = message.getPayload();
-        validate(event);
-        LocalDate monthStart = event.getYearMonth().atDay(1);
-        List<MonthStatistic> lastMonths = monthStatisticRepository
-                .findTop7ByMonthStatisticKeyTenantIdAndMonthStatisticKeyIdUserAndMonthStatisticKeyMonthStartDateLessThanEqualOrderByMonthStatisticKeyMonthStartDateDesc(
-                        event.getTenantId(), event.getUserId(), monthStart);
-        ofNullable(event.getReportEmail()).ifPresentOrElse(reportEmail -> logger.info("Reported Email is found"),
-                () -> logger.info("Reported Email is not found"));
-        statisticEventPublisher.sendUserStatisticAnalysisRequest(event.getUserId(), monthStatisticMapper
-                .toAnalysisRequest(event, lastMonths.stream()
-                        .map(monthStatisticMapper::toHistoryEntry)
-                        .toList()));
+        try (LogContextScope ignored = LogContextScope.open()
+                .with(TENANT_ID, event.getTenantId())
+                .with(TARGET_USER_ID, event.getUserId())) {
+            validate(event);
+            LocalDate monthStart = event.getYearMonth().atDay(1);
+            List<MonthStatistic> lastMonths = monthStatisticRepository
+                    .findTop7ByMonthStatisticKeyTenantIdAndMonthStatisticKeyIdUserAndMonthStatisticKeyMonthStartDateLessThanEqualOrderByMonthStatisticKeyMonthStartDateDesc(
+                            event.getTenantId(), event.getUserId(), monthStart);
+            ofNullable(event.getReportEmail()).ifPresentOrElse(reportEmail -> logger.info("Reported Email is found"),
+                    () -> logger.info("Reported Email is not found"));
+            statisticEventPublisher.sendUserStatisticAnalysisRequest(event.getUserId(), monthStatisticMapper
+                    .toAnalysisRequest(event, lastMonths.stream()
+                            .map(monthStatisticMapper::toHistoryEntry)
+                            .toList()));
+        }
     }
 
 

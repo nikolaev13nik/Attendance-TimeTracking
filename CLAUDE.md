@@ -159,7 +159,9 @@ malformed messages go straight to the DLQ.
 connect/read timeouts from `att.integration.attendance-accounting.*`, an interceptor that **forwards the
 caller's JWT** from the `SecurityContextHolder` (so downstream authorization sees the original user), and
 `InternalApiResponseErrorHandler`, which maps 404 → `NotFoundException` and any other error →
-`InternalApiException`. Reuse that error handler for any further internal client.
+`InternalApiException`. Reuse that error handler for any further internal client. The `RestClient` is also given
+Boot's `ObservationRegistry`, so every call carries a W3C `traceparent` header and Accounting logs under the
+caller's `traceId` (`AccountingClientTracingTest`); a further internal client needs the same.
 
 There are two production callers, both in `StatisticInfoService` and both **only when `report=true`**:
 
@@ -239,7 +241,11 @@ plus `targetUserId`, the context's `idUser`. Locally it is text, `[traceId] [use
 every strategy, reads included; `rejected: <reason>` at WARN for a 4xx
 `@ResponseStatus` exception; `failed` with the stack trace at ERROR otherwise. Steps that one strategy calls
 on another (`countWorkedDaysService.fetch(...)`) write nothing of their own. Known gap: `StatisticInfoService`
-still logs the reporter profile including its email.
+still logs the reporter profile including its email. Kafka carries the trace too:
+`spring.cloud.stream.kafka.binder.enable-observation=true` (`async-messages.yml`) adds `traceparent` to every
+produced record and continues it in the consumer, and `StatisticEnrichmentConsumer` puts the event's
+`tenantId` and `userId` (as `targetUserId`) into the MDC with `LogContextScope`, since a consumer has no HTTP
+request to take them from. Without a broker in the tests, the Kafka half is verified only on a real cluster.
 
 ### Persistence
 

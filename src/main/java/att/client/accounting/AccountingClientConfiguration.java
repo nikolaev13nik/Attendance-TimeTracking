@@ -1,5 +1,7 @@
 package att.client.accounting;
 
+import io.micrometer.observation.ObservationRegistry;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -30,7 +32,7 @@ public class AccountingClientConfiguration {
     private long readTimeoutMs;
 
     @Bean
-    AccountApi accountApi() {
+    AccountApi accountApi(ObservationRegistry observationRegistry) {
         JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(
                 HttpClient.newBuilder()
                         .connectTimeout(Duration.ofMillis(connectTimeoutMs))
@@ -40,6 +42,7 @@ public class AccountingClientConfiguration {
         RestClient restClient = ApiClient.buildRestClientBuilder(ApiClient.createDefaultMapper(null))
                 .baseUrl(baseUrl)
                 .requestFactory(requestFactory)
+                .observationRegistry(observationRegistry)
                 .requestInterceptor(forwardCallerJwtInterceptor())
                 .defaultStatusHandler(new InternalApiResponseErrorHandler("attendance-accounting"))
                 .build();

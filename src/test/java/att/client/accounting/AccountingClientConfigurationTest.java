@@ -2,6 +2,8 @@ package att.client.accounting;
 
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 
+import io.micrometer.observation.ObservationRegistry;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -46,7 +48,7 @@ class AccountingClientConfigurationTest {
         ReflectionTestUtils.setField(configuration, "connectTimeoutMs", 2000L);
         ReflectionTestUtils.setField(configuration, "readTimeoutMs", 5000L);
 
-        return configuration.accountApi();
+        return configuration.accountApi(ObservationRegistry.NOOP);
     }
 
     private void authenticateAs(String tokenValue) {
