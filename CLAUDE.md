@@ -196,11 +196,15 @@ spec. Replace it wholesale whenever Accounting's spec changes; its secured paths
 
 - Every persisted row and most endpoints carry a `tenantId` path/column; `att.dao.*` queries are always
   scoped by tenant + user.
-- **The shared security code lives in `../attendance-security-common-lib`** (`co.il.attendance.security`,
-  published to GitHub Packages and pulled in as a Maven dependency; bump `attendance-security-common-lib.version`
+- **The shared security and logging code lives in `../attendance-common-lib`** (`co.il.attendance.security`,
+  `co.il.attendance.logging`,
+  published to GitHub Packages and pulled in as a Maven dependency; bump `attendance-common-lib.version`
   in the pom to take a new release). Its Spring Boot auto-configuration provides `SecurityConstants`,
-  `JwtClaimsResolver`, the `RoleHierarchy` and `JwtAuthenticationConverter` beans, `TenantInterceptor` and the
-  `AccessDeniedHandler`, the same ones Accounting uses. Change that behaviour in the library, not here. Only
+  `JwtClaimsResolver`, the `RoleHierarchy` and `JwtAuthenticationConverter` beans, `TenantInterceptor`, the
+  `AccessDeniedHandler` and the `AuthenticationEntryPoint` (logs every 401), the same ones Accounting uses.
+  Its logging part puts `traceId`, `userId`, `tenantId` and `pathTenantId` into the MDC for every request and
+  writes one `ApiRequest` line per request, plus an `audit` line for platform admin requests; both parts are
+  always on. Change that behaviour in the library, not here. Only
   `att.security.CallerResolver` (the caller's user id and home tenant from the JWT, `null` when missing or
   not a number) and `SecurityConfiguration` (JWT decoder and URL rules) stay in this repo. Building
   needs a GitHub token with `read:packages` under server id `github` in `~/.m2/settings.xml`; CI uses its
