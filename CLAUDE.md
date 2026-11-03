@@ -4,9 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## System context
 
-This repo is one microservice (`att`) in a larger system of ~5 microservices behind an API Gateway /
-service discovery layer (see `../attendance-project-common/docs/TimeTracker_docs.md` for the overall
-design). Do not implement authentication, user registration, or role management here — that's owned by
+This repo is one microservice (`att`) in a larger system of ~5 microservices behind one nginx ingress
+(see `../attendance-project-common/docs/TimeTracker_docs.md` for the overall design). Do not implement authentication, user registration, or role management here — that's owned by
 the sibling **Attendance-Accounting** service (`../Attendance-Accounting`), which issues the JWTs this
 service only *validates* (`att.security`). This service is the source of attendance/time-tracking data
 and monthly statistics; the downstream **AI Assistance & Notification** service
@@ -218,11 +217,10 @@ spec. Replace it wholesale whenever Accounting's spec changes; its secured paths
   `SecurityConstants.PLATFORM_TENANT_ID` (0), checked by `JwtClaimsResolver.isPlatformAdmin`. A tenant's
   `ADMINISTRATOR` manages its own company only; it never bypasses the tenant check. Accounting uses the
   same interceptor.
-- Method-level authorization is additionally enforced with `@PreAuthorize` on controller methods
-  (`co.il.attendance.security.SecurityConstants.SecurityRoles`: `USER`, `ADMINISTRATOR`, `PLATFORM_ADMIN`,
-  with the shared `RoleHierarchy` `PLATFORM_ADMIN > ADMINISTRATOR > USER`), typically
-  `hasRole(ADMINISTRATOR) || #idUser.toString() == authentication.name` for self-service endpoints.
-  Everything else is admin-only.
+- Method-level authorization is additionally enforced with the shared annotations on controller methods
+  (roles `USER`, `ADMINISTRATOR`, `PLATFORM_ADMIN`, with the shared `RoleHierarchy`
+  `PLATFORM_ADMIN > ADMINISTRATOR > USER`): `@AdminOrSelf` for self-service endpoints (the parameter must be
+  named `idUser`), `@AdminOnly` for everything else.
 - Auth is JWT-only (`SecurityConfiguration`), HMAC-signed (`att.security.jwt.secret`), validated as an
   OAuth2 resource server, roles read from the `authorities` claim with a `ROLE_` prefix — no login/token
   issuance happens in this service.
