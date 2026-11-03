@@ -24,6 +24,7 @@ import att.model.DataTime;
 import att.model.LeaveDay;
 
 import static att.exceptions.ErrorConstants.ATTENDANCE_NOT_FOUND_MSG;
+import static att.exceptions.ErrorConstants.FULL_LEAVE_DAY_WITH_WORK_MSG;
 import static att.exceptions.ErrorConstants.FUTURE_WORK_DATE_MSG;
 import static att.exceptions.ErrorConstants.INCOMPLETE_SESSIONS_MSG;
 import static att.exceptions.ErrorConstants.LEAVE_DAY_AMOUNT_EXCEEDS_FULL_DAY_MSG;
@@ -671,6 +672,96 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertEquals(INCOMPLETE_SESSIONS_MSG, errorMessage(response));
 
+        assertEquals(countBefore, monthStatisticRepository.count(),
+                "Reason: no statistic row should be persisted when the batch is rejected");
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("POST month statistic as admin - full leave day (whole or split) on a worked day rejects the request")
+    void getMonthStatisticFullLeaveDayWithWorkTest() {
+        long countBefore = monthStatisticRepository.count();
+
+        ResponseEntity<String> editResponse = sendRequestWithAdmin(HttpMethod.POST, EDIT_URL,
+                null, 2, createEditDataTimeUserDto(SEEDED_OPEN_ID, null,
+                        OffsetDateTime.parse("2024-01-04T17:30:00Z")));
+        assertEquals(HttpStatus.OK, editResponse.getStatusCode());
+
+        ResponseEntity<String> leaveResponse = sendRequestWithAdmin(HttpMethod.POST, ADD_LEAVE_DAYS_URL, USER_ID, 2,
+                generateLeaveReportRequestDto(List.of(
+                        generateLeaveDayEntryDto(LocalDate.parse("2024-01-02"), 1.0, null),
+                        generateLeaveDayEntryDto(LocalDate.parse("2024-01-03"), 0.5, 0.5))));
+        assertEquals(HttpStatus.OK, leaveResponse.getStatusCode(),
+                "Reason: recording a full leave day on a worked day stays allowed");
+
+        ResponseEntity<String> response = sendRequestWithAdmin(HttpMethod.POST,
+                statistic(STATISTIC_URL, "2024-01", USER_ID), null, 2, null);
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(String.format(FULL_LEAVE_DAY_WITH_WORK_MSG, "user:2 [2024-01-02, 2024-01-03]"),
+                errorMessage(response), "Reason: the message names every conflicting user and date");
+
+        assertEquals(countBefore, monthStatisticRepository.count(),
+                "Reason: no statistic row should be persisted for a rejected request");
+        verifyNoInteractions(statisticEventProducer);
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("POST month statistic as admin - partial leave day on a worked day is accepted")
+    void getMonthStatisticPartialLeaveDayWithWorkTest() {
+        ResponseEntity<String> editResponse = sendRequestWithAdmin(HttpMethod.POST, EDIT_URL,
+                null, 2, createEditDataTimeUserDto(SEEDED_OPEN_ID, null,
+                        OffsetDateTime.parse("2024-01-04T17:30:00Z")));
+        assertEquals(HttpStatus.OK, editResponse.getStatusCode());
+
+        ResponseEntity<String> leaveResponse = sendRequestWithAdmin(HttpMethod.POST, ADD_LEAVE_DAYS_URL, USER_ID, 2,
+                generateLeaveReportRequestDto(List.of(
+                        generateLeaveDayEntryDto(LocalDate.parse("2024-01-02"), 0.5, null))));
+        assertEquals(HttpStatus.OK, leaveResponse.getStatusCode());
+
+        ResponseEntity<String> response = sendRequestWithAdmin(HttpMethod.POST,
+                statistic(STATISTIC_URL, "2024-01", USER_ID), null, 2, null);
+        assertEquals(HttpStatus.OK, response.getStatusCode(),
+                "Reason: half a day of leave next to work hours is a valid combination");
+        MonthlyUserStatisticInfoDto stat = readList(response, MonthlyUserStatisticInfoDto.class).get(0);
+        assertEquals(3, stat.getWorkDays());
+        assertEquals(0.5, stat.getVacationDays());
+        verifyMonthStatisticDbState(stat, 2);
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("POST month statistic as admin - another user's conflict blocks the tenant-wide run only")
+    void getMonthStatisticOtherUserConflictTest() {
+        ResponseEntity<String> editResponse = sendRequestWithAdmin(HttpMethod.POST, EDIT_URL,
+                null, 2, createEditDataTimeUserDto(SEEDED_OPEN_ID, null,
+                        OffsetDateTime.parse("2024-01-04T17:30:00Z")));
+        assertEquals(HttpStatus.OK, editResponse.getStatusCode());
+
+        DataTime otherUserSession = new DataTime();
+        otherUserSession.setTenantId(2);
+        otherUserSession.setIdUser(OTHER_USER_ID);
+        otherUserSession.setWorkDate(LocalDate.parse("2024-01-10"));
+        otherUserSession.setOpenSessionDate(OffsetDateTime.parse("2024-01-10T09:00:00Z"));
+        otherUserSession.setCloseSessionDate(OffsetDateTime.parse("2024-01-10T12:00:00Z"));
+        sessionAttendanceTimeRepository.save(otherUserSession);
+
+        ResponseEntity<String> leaveResponse = sendRequestWithAdmin(HttpMethod.POST, ADD_LEAVE_DAYS_URL,
+                OTHER_USER_ID, 2, generateLeaveReportRequestDto(List.of(
+                        generateLeaveDayEntryDto(LocalDate.parse("2024-01-10"), null, 1.0))));
+        assertEquals(HttpStatus.OK, leaveResponse.getStatusCode());
+
+        ResponseEntity<String> singleUserResponse = sendRequestWithAdmin(HttpMethod.POST,
+                statistic(STATISTIC_URL, "2024-01", USER_ID), null, 2, null);
+        assertEquals(HttpStatus.OK, singleUserResponse.getStatusCode(),
+                "Reason: a conflict of another user must not block this user's statistic");
+
+        long countBefore = monthStatisticRepository.count();
+        ResponseEntity<String> tenantResponse = sendRequestWithAdmin(HttpMethod.POST,
+                statistic(STATISTIC_URL, "2024-01"), null, 2, null);
+        assertEquals(HttpStatus.BAD_REQUEST, tenantResponse.getStatusCode());
+        assertEquals(String.format(FULL_LEAVE_DAY_WITH_WORK_MSG, "user:3 [2024-01-10]"),
+                errorMessage(tenantResponse));
         assertEquals(countBefore, monthStatisticRepository.count(),
                 "Reason: no statistic row should be persisted when the batch is rejected");
     }

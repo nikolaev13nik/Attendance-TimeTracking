@@ -25,4 +25,8 @@ public class ErrorProvider {
     public static void leaveDayEmpty(String msg) {
         throw new BadRequestException(msg);
     }
+
+    public static void fullLeaveDayWithWork(String msg) {
+        throw new BadRequestException(msg);
+    }
 }

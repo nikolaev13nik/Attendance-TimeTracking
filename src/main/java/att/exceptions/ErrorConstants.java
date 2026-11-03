@@ -20,6 +20,9 @@ public class ErrorConstants {
             "Leave day %s reports neither vacation nor sick time";
     public static final String LEAVE_DAY_EMPTY_MSG =
             "Leave day %s would be left without vacation or sick time, remove the record instead";
+    public static final String FULL_LEAVE_DAY_WITH_WORK_MSG =
+            "Full leave day and work hours are recorded on the same day, resolve them before computing " +
+                    "the statistic: %s";
     public static final String REPORTER_UNRESOLVED_MSG =
             "Reporting user cannot be resolved: the request carries no user id";
 

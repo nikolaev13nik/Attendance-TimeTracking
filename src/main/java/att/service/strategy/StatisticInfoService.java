@@ -10,6 +10,7 @@ import java.time.YearMonth;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.function.Function;
 
@@ -23,11 +24,18 @@ import att.mapper.MonthStatisticMapper;
 import att.model.LeaveDay;
 import att.model.MonthStatistic;
 
+import static att.exceptions.ErrorConstants.FULL_LEAVE_DAY_WITH_WORK_MSG;
 import static att.exceptions.ErrorConstants.INCOMPLETE_SESSIONS_MSG;
 import static att.exceptions.ErrorConstants.REPORTER_UNRESOLVED_MSG;
+import static att.exceptions.ErrorProvider.fullLeaveDayWithWork;
+import static att.service.AttUtility.FULL_DAY;
 import static att.service.AttUtility.amountOrZero;
 import static java.util.Objects.nonNull;
 import static java.util.Optional.ofNullable;
+import static java.util.stream.Collectors.groupingBy;
+import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.mapping;
+import static java.util.stream.Collectors.toCollection;
 import static org.apache.commons.lang3.BooleanUtils.isFalse;
 import static org.hibernate.internal.util.collections.CollectionHelper.isNotEmpty;
 
@@ -56,6 +64,7 @@ public class StatisticInfoService extends BaseGetService<Void> {
         context.setStartDate(monthStart);
         context.setEndDate(monthEnd);
         context.getStatisticInfoHolder().setTargetUserIds(resolveTargetUserIds(context));
+        fetchFullLeaveDaysWithWork(context);
         resolveTargetUserProfiles(context);
         fetchReporterProfile(context);
     }
@@ -71,6 +80,10 @@ public class StatisticInfoService extends BaseGetService<Void> {
                 throw new BadRequestException(INCOMPLETE_SESSIONS_MSG);
             }
         });
+        List<LeaveDay> fullLeaveDaysWithWork = context.getStatisticInfoHolder().getFullLeaveDaysWithWork();
+        if (isNotEmpty(fullLeaveDaysWithWork)) {
+            fullLeaveDayWithWork(String.format(FULL_LEAVE_DAY_WITH_WORK_MSG, describeConflicts(fullLeaveDaysWithWork)));
+        }
     }
 
     @Override
@@ -114,6 +127,23 @@ public class StatisticInfoService extends BaseGetService<Void> {
         Set<Integer> userIds = new TreeSet<>(timeRepository.findDistinctUserIdsByTenantId(context.getTenantId()));
         userIds.addAll(leaveDaysRepository.findDistinctUserIdsByTenantId(context.getTenantId()));
         return userIds;
+    }
+
+    private void fetchFullLeaveDaysWithWork(DataTimeContext<Void> context) {
+        StatisticInfoHolder holder = context.getStatisticInfoHolder();
+        holder.setFullLeaveDaysWithWork(leaveDaysRepository.findFullLeaveDaysWithWorkSessions(context.getTenantId(),
+                        context.getStartDate(), context.getEndDate(), FULL_DAY).stream()
+                .filter(leaveDay -> holder.getTargetUserIds().contains(leaveDay.getIdUser()))
+                .toList());
+    }
+
+    private static String describeConflicts(List<LeaveDay> fullLeaveDaysWithWork) {
+        return fullLeaveDaysWithWork.stream()
+                .collect(groupingBy(LeaveDay::getIdUser, TreeMap::new,
+                        mapping(LeaveDay::getLeaveDate, toCollection(TreeSet::new))))
+                .entrySet().stream()
+                .map(entry -> String.format("user:%s %s", entry.getKey(), entry.getValue()))
+                .collect(joining("; "));
     }
 
     private void resolveTargetUserProfiles(DataTimeContext<Void> context) {
