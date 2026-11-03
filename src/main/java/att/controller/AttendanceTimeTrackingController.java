@@ -3,7 +3,6 @@ package att.controller;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.format.annotation.DateTimeFormat.ISO;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -39,6 +38,8 @@ import att.service.strategy.OpenSessionService;
 import att.service.strategy.RemoveRecordService;
 import att.service.strategy.SessionChangeService;
 import att.service.strategy.StatisticInfoService;
+import co.il.attendance.security.AdminOnly;
+import co.il.attendance.security.AdminOrSelf;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -61,7 +62,8 @@ public class AttendanceTimeTrackingController implements TimeTrackingApi {
     private final LeaveDayRemoveService leaveDayRemoveService;
     private final AsyncMessageHandler statisticAsyncMessageHandler;
 
-    @PreAuthorize("hasRole(T(co.il.attendance.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name()) || #idUser.toString() == authentication.name")
+    @AdminOrSelf
+    @Override
     public ResponseEntity<DataTimeDto> openSession(@PathVariable Integer tenantId, @PathVariable Integer idUser,
                                                    @RequestBody SessionDataDto sessionDataDto) {
         DataTimeContext<SessionDataDto> context = DataTimeContext.<SessionDataDto>builder().idUser(idUser)
@@ -71,7 +73,8 @@ public class AttendanceTimeTrackingController implements TimeTrackingApi {
         return ResponseEntity.ok(context.getSingleResponseDataTimeDto());
     }
 
-    @PreAuthorize("hasRole(T(co.il.attendance.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name()) || #idUser.toString() == authentication.name")
+    @AdminOrSelf
+    @Override
     public ResponseEntity<DataTimeDto> closeSession(@PathVariable Integer tenantId, @PathVariable Integer idUser,
                                                     @RequestBody SessionDataDto sessionDataDto) {
         DataTimeContext<SessionDataDto> context = DataTimeContext.<SessionDataDto>builder().idUser(idUser)
@@ -81,7 +84,8 @@ public class AttendanceTimeTrackingController implements TimeTrackingApi {
         return ResponseEntity.ok(context.getSingleResponseDataTimeDto());
     }
 
-    @PreAuthorize("hasRole(T(co.il.attendance.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")
+    @AdminOnly
+    @Override
     public ResponseEntity<DataTimeDto> editRecord(@PathVariable Integer tenantId,
                                                   @RequestBody EditDataTimeUserDto dataTimeDto) {
         DataTimeContext<EditDataTimeUserDto> context = DataTimeContext.<EditDataTimeUserDto>builder()
@@ -90,7 +94,8 @@ public class AttendanceTimeTrackingController implements TimeTrackingApi {
         return ResponseEntity.ok(context.getSingleResponseDataTimeDto());
     }
 
-    @PreAuthorize("hasRole(T(co.il.attendance.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name()) || #idUser.toString() == authentication.name")
+    @AdminOrSelf
+    @Override
     public ResponseEntity<List<DataTimeDto>> getRecordsEmployeeByRange(@PathVariable Integer tenantId,
                                                                        @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate startDate,
                                                                        @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate endDate,
@@ -102,7 +107,8 @@ public class AttendanceTimeTrackingController implements TimeTrackingApi {
         return ResponseEntity.ok(context.getResponseDataTimeDto());
     }
 
-    @PreAuthorize("hasRole(T(co.il.attendance.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")
+    @AdminOnly
+    @Override
     public ResponseEntity<Long> getCountWorkedDaysByEmployee(@PathVariable Integer tenantId,
                                                              @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate startDate,
                                                              @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate endDate,
@@ -113,7 +119,8 @@ public class AttendanceTimeTrackingController implements TimeTrackingApi {
         return ResponseEntity.ok(context.getTotalDaysPerUser().get(idUser));
     }
 
-    @PreAuthorize("hasRole(T(co.il.attendance.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")
+    @AdminOnly
+    @Override
     public ResponseEntity<Long> getAllMinutesEmployeeBetweenDates(@PathVariable Integer tenantId,
                                                                 @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate startDate,
                                                                 @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate endDate,
@@ -125,7 +132,8 @@ public class AttendanceTimeTrackingController implements TimeTrackingApi {
         return ResponseEntity.ok(context.getTotalWorkMinutesPerUser().get(idUser));
     }
 
-    @PreAuthorize("hasRole(T(co.il.attendance.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")
+    @AdminOnly
+    @Override
     public ResponseEntity<Long> getOvertimeMinutesEmployeeBetweenDates(@PathVariable Integer tenantId,
                                                                 @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate startDate,
                                                                 @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate endDate,
@@ -136,7 +144,7 @@ public class AttendanceTimeTrackingController implements TimeTrackingApi {
         return ResponseEntity.ok(context.getTotalOvertimeMinutesPerUser().get(idUser));
     }
 
-    @PreAuthorize("hasRole(T(co.il.attendance.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name()) || #idUser.toString() == authentication.name")
+    @AdminOrSelf
     @Override
     public ResponseEntity<Void> addLeaveDays(@PathVariable Integer tenantId, @PathVariable Integer idUser,
                                              @RequestBody LeaveReportRequestDto leaveReport) {
@@ -147,7 +155,8 @@ public class AttendanceTimeTrackingController implements TimeTrackingApi {
         return ResponseEntity.ok().build();
     }
 
-    @PreAuthorize("hasRole(T(co.il.attendance.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name()) || #idUser.toString() == authentication.name")
+    @AdminOrSelf
+    @Override
     public ResponseEntity<List<DataTimeDto>> checkRowsForNull(@PathVariable Integer tenantId,
                                                               @PathVariable Integer idUser,
                                                               @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate startDate,
@@ -159,7 +168,7 @@ public class AttendanceTimeTrackingController implements TimeTrackingApi {
         return ResponseEntity.ok(context.getResponseDataTimeDto());
     }
 
-    @PreAuthorize("hasRole(T(co.il.attendance.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")
+    @AdminOnly
     @Override
     public ResponseEntity<List<MonthlyUserStatisticInfoDto>> getMonthStatistic(@PathVariable Integer tenantId,
                                                                                @RequestParam YearMonth targetMonth,
@@ -178,7 +187,8 @@ public class AttendanceTimeTrackingController implements TimeTrackingApi {
         return ResponseEntity.ok(context.getStatisticInfoHolder().getMultipleUserData().values().stream().toList());
     }
 
-    @PreAuthorize("hasRole(T(co.il.attendance.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name()) || #idUser.toString() == authentication.name")
+    @AdminOrSelf
+    @Override
     public ResponseEntity<List<LeaveDayDto>> getLeaveDays(@PathVariable Integer tenantId,
                                                           @PathVariable Integer idUser,
                                                           @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate startDate,
@@ -189,7 +199,8 @@ public class AttendanceTimeTrackingController implements TimeTrackingApi {
         return ResponseEntity.ok(context.getResponseLeaveDayDto());
     }
 
-    @PreAuthorize("hasRole(T(co.il.attendance.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")
+    @AdminOnly
+    @Override
     public ResponseEntity<DataTimeDto> removeRecord(@PathVariable Integer tenantId, @PathVariable Integer id) {
         DataTimeContext<DataTimeDto> context =
                 DataTimeContext.<DataTimeDto>builder().recordId(id).tenantId(tenantId).build();
@@ -197,7 +208,8 @@ public class AttendanceTimeTrackingController implements TimeTrackingApi {
         return ResponseEntity.ok(context.getSingleResponseDataTimeDto());
     }
 
-    @PreAuthorize("hasRole(T(co.il.attendance.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")
+    @AdminOnly
+    @Override
     public ResponseEntity<LeaveDayDto> editLeaveDay(@PathVariable Integer tenantId,
                                                     @RequestBody EditLeaveDayDto editLeaveDayDto) {
         DataTimeContext<EditLeaveDayDto> context = DataTimeContext.<EditLeaveDayDto>builder()
@@ -206,7 +218,8 @@ public class AttendanceTimeTrackingController implements TimeTrackingApi {
         return ResponseEntity.ok(context.getSingleResponseLeaveDayDto());
     }
 
-    @PreAuthorize("hasRole(T(co.il.attendance.security.SecurityConstants.SecurityRoles).ADMINISTRATOR.name())")
+    @AdminOnly
+    @Override
     public ResponseEntity<LeaveDayDto> removeLeaveDay(@PathVariable Integer tenantId, @PathVariable Integer id) {
         DataTimeContext<LeaveDayDto> context =
                 DataTimeContext.<LeaveDayDto>builder().leaveDayId(id).tenantId(tenantId).build();

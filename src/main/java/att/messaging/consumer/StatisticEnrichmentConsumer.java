@@ -26,6 +26,7 @@ import lombok.RequiredArgsConstructor;
 import static co.il.attendance.logging.LogContext.TARGET_USER_ID;
 import static co.il.attendance.logging.LogContext.TENANT_ID;
 import static java.util.Optional.ofNullable;
+import static org.apache.commons.lang3.BooleanUtils.isFalse;
 
 @Configuration
 @RequiredArgsConstructor
@@ -65,7 +66,7 @@ public class StatisticEnrichmentConsumer {
 
     private void validate(MonthStatisticEvent event) {
         Set<ConstraintViolation<MonthStatisticEvent>> violations = validator.validate(event);
-        if (!violations.isEmpty()) {
+        if (isFalse(violations.isEmpty())) {
             throw new ConstraintViolationException(violations);
         }
     }

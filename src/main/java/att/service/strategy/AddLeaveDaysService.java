@@ -25,6 +25,7 @@ import static att.service.AttUtility.validateLeaveDayAmounts;
 import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
+import static org.apache.commons.lang3.BooleanUtils.isFalse;
 
 @Service
 public class AddLeaveDaysService extends DataTimeServiceBase<LeaveReportRequestDto> {
@@ -47,7 +48,7 @@ public class AddLeaveDaysService extends DataTimeServiceBase<LeaveReportRequestD
     protected void validate(DataTimeContext<LeaveReportRequestDto> context) {
         Set<LocalDate> seen = new HashSet<>();
         context.getTask().getDays().forEach(day -> {
-            if (!seen.add(day.getDate())) {
+            if (isFalse(seen.add(day.getDate()))) {
                 leaveDayDateDuplicated(String.format(LEAVE_DAY_DATE_DUPLICATED_MSG, day.getDate()));
             }
             if (nullIfZero(day.getVacationAmount()) == null && nullIfZero(day.getSickAmount()) == null) {

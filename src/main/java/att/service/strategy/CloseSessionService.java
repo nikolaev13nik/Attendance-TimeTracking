@@ -11,6 +11,7 @@ import att.model.DataTime;
 import att.service.base.DataTimeServiceBase;
 
 import static att.service.AttUtility.validateOpenCloseDateInput;
+import static org.apache.commons.lang3.BooleanUtils.isFalse;
 
 @Service
 public class CloseSessionService extends DataTimeServiceBase<SessionDataDto> {
@@ -27,7 +28,7 @@ public class CloseSessionService extends DataTimeServiceBase<SessionDataDto> {
     @Override
     protected void executeBusiness(DataTimeContext<SessionDataDto> context) {
         List<DataTime> userWorkSessionList = context.getUserWorkSessionList();
-        if (!userWorkSessionList.isEmpty() && userWorkSessionList.get(0).getCloseSessionDate() == null) {
+        if (isFalse(userWorkSessionList.isEmpty()) && userWorkSessionList.get(0).getCloseSessionDate() == null) {
             DataTime dataTime = userWorkSessionList.get(0);
             dataTime.setCloseSessionDate(context.getCloseSessionDate());
         } else {
