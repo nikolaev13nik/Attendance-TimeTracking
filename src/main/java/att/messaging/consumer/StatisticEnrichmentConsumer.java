@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.domain.Limit;
 import org.springframework.messaging.Message;
 
 import java.time.LocalDate;
@@ -38,6 +39,7 @@ public class StatisticEnrichmentConsumer {
     private final StatisticEventProducer statisticEventPublisher;
     private final Validator validator;
     private static final Logger logger = LoggerFactory.getLogger(StatisticEnrichmentConsumer.class);
+    private static final int HISTORY_MONTHS = 7;
 
     @Bean
     public Consumer<Message<MonthStatisticEvent>> monthStatisticEnrichment() {
@@ -51,9 +53,8 @@ public class StatisticEnrichmentConsumer {
                 .with(TARGET_USER_ID, event.getUserId())) {
             validate(event);
             LocalDate monthStart = event.getYearMonth().atDay(1);
-            List<MonthStatistic> lastMonths = monthStatisticRepository
-                    .findTop7ByMonthStatisticKeyTenantIdAndMonthStatisticKeyIdUserAndMonthStatisticKeyMonthStartDateLessThanEqualOrderByMonthStatisticKeyMonthStartDateDesc(
-                            event.getTenantId(), event.getUserId(), monthStart);
+            List<MonthStatistic> lastMonths = monthStatisticRepository.findRecentMonths(
+                    event.getTenantId(), event.getUserId(), monthStart, Limit.of(HISTORY_MONTHS));
             ofNullable(event.getReportEmail()).ifPresentOrElse(reportEmail -> logger.info("Reported Email is found"),
                     () -> logger.info("Reported Email is not found"));
             statisticEventPublisher.sendUserStatisticAnalysisRequest(event.getUserId(), monthStatisticMapper

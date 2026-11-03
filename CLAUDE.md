@@ -131,7 +131,7 @@ names are constants in `att.messaging.MessagingConstants`:
   `yearMonth` only) published per user when statistics are computed with `report=true`.
 - `monthStatisticEnrichment-in-0` ← topic `att.month-statistic`, group `att-service`, DLQ
   `att.month-statistic.dlq`: this service consumes its own trigger event, loads up to 7 months of history
-  (`MonthStatisticRepository.findTop7...`, anchored on the event's month, most recent first), and
+  (`MonthStatisticRepository.findRecentMonths` with `Limit.of(7)`, anchored on the event's month, most recent first), and
   republishes.
 - `statisticAnalysisRequestProducer-out-0` → topic `att.user-statistic-ai-analysis`: the enriched
   `UserStatisticAnalysisRequestEvent`, consumed by `../Attendance-AI-Assistance` (group
