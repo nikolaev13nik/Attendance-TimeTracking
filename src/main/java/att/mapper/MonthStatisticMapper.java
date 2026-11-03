@@ -34,8 +34,6 @@ public interface MonthStatisticMapper {
     @Mapping(target = "yearMonth", expression = "java(YearMonth.from(entity.getMonthStatisticKey().getMonthStartDate()))")
     UserStatisticHistoryEntryDto toHistoryEntry(MonthStatistic entity);
 
-    // every target is mapped explicitly: both sources expose tenantId, which MapStruct would otherwise
-    // report as an ambiguous mapping source
     @Mapping(target = "tenantId", source = "dto.tenantId")
     @Mapping(target = "userId", source = "dto.userId")
     @Mapping(target = "yearMonth", source = "dto.yearMonth")
@@ -56,10 +54,6 @@ public interface MonthStatisticMapper {
         return fullName.isEmpty() ? null : fullName;
     }
 
-    /**
-     * Forwards the trigger event's identity and report-requester fields onto the analysis request, so the requester
-     * resolved once in the statistic pipeline reaches the AI service unchanged.
-     */
     @Mapping(target = "entries", source = "entries")
     UserStatisticAnalysisRequestEvent toAnalysisRequest(MonthStatisticEvent source,
                                                         List<UserStatisticHistoryEntryDto> entries);

@@ -120,7 +120,7 @@ public abstract class BaseApiControllerTest {
     protected static final int SEEDED_OPEN_ID = 1003;
 
     /**
-     * Leave-day fixtures from {@code V4__att_user_leave_days_setup.sql}: a vacation-only day, a
+     * Leave-day fixtures from {@code V103__att_user_leave_days_setup.sql}: a vacation-only day, a
      * half-and-half day and a sick-only day for the seeded employee, plus one row owned by tenant 1.
      */
     protected static final int SEEDED_LEAVE_VACATION_ID = 2001;
@@ -309,7 +309,6 @@ public abstract class BaseApiControllerTest {
     }
 
 
-    /** Deserialize the response body into a single Object */
     protected <T> T readObject(ResponseEntity<String> response, Class<T> clazz) {
         try {
             return objectMapper.readValue(response.getBody(), clazz);
@@ -318,7 +317,6 @@ public abstract class BaseApiControllerTest {
         }
     }
 
-    /** Deserialize the response body into a List of the given element type */
     protected <T> List<T> readList(ResponseEntity<String> response, Class<T> elementType) {
         try {
             return objectMapper.readValue(
@@ -330,7 +328,6 @@ public abstract class BaseApiControllerTest {
         }
     }
 
-    /** Parse the raw string response body to a Jackson JsonNode */
     protected JsonNode json(ResponseEntity<String> response) {
         try {
             return objectMapper.readTree(response.getBody());
@@ -339,7 +336,6 @@ public abstract class BaseApiControllerTest {
         }
     }
 
-    /** Retrieve message field from a structured error response */
     protected String errorMessage(ResponseEntity<String> response) {
         try {
             JsonNode node = json(response);

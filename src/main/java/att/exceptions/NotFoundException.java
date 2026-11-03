@@ -8,9 +8,6 @@ import java.io.Serial;
 @ResponseStatus(code = HttpStatus.NOT_FOUND)
 public class NotFoundException extends RuntimeException {
 
-	/**
-	 * 
-	 */
 	@Serial
 	private static final long serialVersionUID = 1L;
 

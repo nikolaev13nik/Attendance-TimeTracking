@@ -44,7 +44,6 @@ class InternalApiResponseErrorHandlerTest {
 
             @Override
             public void close() {
-                // no-op
             }
 
             @Override

@@ -30,7 +30,6 @@ public class CloseSessionService extends DataTimeServiceBase<SessionDataDto> {
         if (!userWorkSessionList.isEmpty() && userWorkSessionList.get(0).getCloseSessionDate() == null) {
             DataTime dataTime = userWorkSessionList.get(0);
             dataTime.setCloseSessionDate(context.getCloseSessionDate());
-//            context.getUserWorkSessionList().add(dataTime);
         } else {
             context.getUserWorkSessionList().clear();
             context.getUserWorkSessionList().add(sessionRecordMapper.mapToDateTime(context));

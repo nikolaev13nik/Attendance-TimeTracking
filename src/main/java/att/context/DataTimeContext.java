@@ -28,7 +28,6 @@ import lombok.Setter;
 @AllArgsConstructor
 public class DataTimeContext<T> implements BusinessStrategyContext {
 
-    // input
     private T task;
     private Integer idUser;
     private Integer recordId;
@@ -47,8 +46,6 @@ public class DataTimeContext<T> implements BusinessStrategyContext {
     private List<DataTime> userWorkSessionList = new ArrayList<>();
     @Builder.Default
     private Map<LocalDate, LeaveDay> userLeaveDaysByDate = new LinkedHashMap<>();
-    // output - per user, keyed by idUser, so one context can be reused across a multi-user pipeline
-    // (e.g. StatisticInfoService) without one user's result overwriting another's
     @Builder.Default
     Map<Integer, Long> totalDaysPerUser = new HashMap<>();
     @Builder.Default

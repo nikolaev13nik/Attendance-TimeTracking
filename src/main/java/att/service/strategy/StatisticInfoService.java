@@ -88,7 +88,6 @@ public class StatisticInfoService extends BaseGetService<Void> {
 
     @Override
     protected void mapResult(DataTimeContext<Void> context) {
-        // getMonthStatistic reads results directly off context.getStatisticInfoHolder().getMultipleUserData()
     }
 
     private void composeUserMonthStatistic(DataTimeContext<Void> context, Integer userId, YearMonth targetMonth) {

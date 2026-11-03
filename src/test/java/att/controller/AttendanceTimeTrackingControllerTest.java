@@ -92,10 +92,8 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
         ResponseEntity<String> response = sendRequestWithAdmin(HttpMethod.PUT, OPEN_URL, USER_ID, tenant,
                 task);
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        // response validation
         DataTimeDto body = readObject(response, DataTimeDto.class);
         verifyRespondedBodyOpenCloseSessionApi(body, USER_ID, tenant, openDate, null, null);
-        // db state validations
         verifyRecordStartEndApi(body.getId(), USER_ID, body.getOpenSessionDate(), null);
         assertEquals(recordCountBefore + 1, sessionAttendanceTimeRepository.count(),
                 String.format("Reason: total count of attendance record is to be increased abd expect to be as:%s", recordCountBefore + 1));
@@ -236,10 +234,8 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
                 USER_ID, tenant, task);
         assertEquals(HttpStatus.OK, response.getStatusCode());
 
-        // response validation
         DataTimeDto body = readObject(response, DataTimeDto.class);
         verifyRespondedBodyOpenCloseSessionApi(body, USER_ID, tenant, null, closeSessionDate, SEEDED_TODAY_OPEN_ID);
-        // db state validations
         verifyRecordStartEndApi(body.getId(), USER_ID, body.getOpenSessionDate(), body.getCloseSessionDate());
         assertEquals(recordCountBefore, sessionAttendanceTimeRepository.count(),
                 String.format("Reason: total count of attendance record should not be changed,and expect to be as:%s", recordCountBefore));
@@ -252,11 +248,9 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
         response = sendRequestWithAdmin(HttpMethod.PUT, CLOSE_URL, USER_ID, tenant, task);
         assertEquals(HttpStatus.OK, response.getStatusCode());
 
-        // response validation
         body = readObject(response, DataTimeDto.class);
         verifyRespondedBodyOpenCloseSessionApi(body, USER_ID, tenant, null,
                 secondCloseSessionDate, null);
-        // db state validations
         verifyRecordStartEndApi(body.getId(), USER_ID, body.getOpenSessionDate(), body.getCloseSessionDate());
         assertEquals(recordCountBefore + 1, sessionAttendanceTimeRepository.count(),
                 String.format("Reason: total count of attendance record should not be changed,and" +
@@ -277,7 +271,6 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
         DataTimeDto body = readObject (response, DataTimeDto.class);
         assertEquals(newFinishTime, body.getCloseSessionDate());
 
-        // db state validations
         OffsetDateTime closeSessionDateDB = sessionAttendanceTimeRepository.findById(SEEDED_FINISHED_ID).orElseThrow()
                 .getCloseSessionDate();
 
@@ -307,18 +300,6 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
                 String.format("Reason: total count of attendance record should not be changed ,expected:%s ,exist:%s",
                         recordCountBefore, countAfter));
     }
-
-//    @Test
-//    @FlywayTest
-//    @DisplayName("GET /record/records?localDate=... as admin returns that day's records")
-//    void recordsByDayAsAdminTest() {
-//        ResponseEntity<String> response = sendRequestWithAdmin(HttpMethod.GET, RECORDS_URL + "?localDate=" + SEEDED_DAY,
-//                null,
-//                2, null);
-//        assertEquals(HttpStatus.OK, response.getStatusCode());
-//        List<Integer> ids = readList(response, DataTimeDto.class).stream().map(DataTimeDto::getId).toList();
-//        assertTrue(ids.contains(1001));
-//    }
 
     @Test
     @FlywayTest
@@ -532,7 +513,6 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
         assertTrue(saved.stream().anyMatch(d -> d.getLeaveDate().equals(LocalDate.parse("2024-01-20"))
                 && d.getVacationAmount() == null && d.getSickAmount() == 1.0));
 
-        // negative case
         LocalDate reportDate = LocalDate.parse(
                 "2024-01-20");
         LeaveReportRequestDto task2 = generateLeaveReportRequestDto(List.of(generateLeaveDayEntryDto(reportDate,
@@ -548,7 +528,6 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
     @FlywayTest
     @DisplayName("POST month statistic as admin - single user")
     void getMonthStatisticSingleUser_withVacationAndSickDaysTest() {
-        // preparation for test
         // close the blocking session so the month has no incomplete sessions
         ResponseEntity<String> editResponse = sendRequestWithAdmin(HttpMethod.POST, EDIT_URL,
                 null, 2, createEditDataTimeUserDto(SEEDED_OPEN_ID, null,
@@ -580,7 +559,6 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
         assertEquals(1.0, stat.getVacationDays());
         assertEquals(1.5, stat.getSickDays());
 
-        // db state validation
         verifyMonthStatisticDbState(stat, 2);
     }
 
@@ -674,7 +652,6 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
         assertEquals(1.0, user3Stat.getVacationDays());
         assertEquals(1.0, user3Stat.getSickDays());
 
-        // db state validations
         verifyMonthStatisticDbState(user2Stat, 2);
         verifyMonthStatisticDbState(user3Stat, 2);
         assertEquals(countBefore + 2, monthStatisticRepository.count(),
@@ -926,7 +903,6 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
         assertEquals(1.0, body.getVacationAmount(), "Reason: the new vacation portion must come back");
         assertNull(body.getSickAmount(), "Reason: a portion set to zero is cleared, not stored as zero");
 
-        // db state validations
         verifyLeaveDayDbState(SEEDED_LEAVE_SPLIT_ID, LocalDate.parse(SEEDED_LEAVE_SPLIT_DAY), 1.0, null);
         assertEquals(recordCountBefore, leaveDaysRepository.count(),
                 String.format("Reason: an edit must not change the total count of leave days ,expected:%s ,exist:%s",
@@ -947,7 +923,6 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
         assertEquals(1.0, body.getVacationAmount(),
                 "Reason: portions left out of the request keep their stored value");
 
-        // db state validations
         verifyLeaveDayDbState(SEEDED_LEAVE_VACATION_ID, LocalDate.parse(SEEDED_LEAVE_FREE_DAY), 1.0, null);
     }
 
@@ -1032,7 +1007,6 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
                 "Reason: the removed record must come back so the caller can report what went");
         assertEquals(1.0, body.getSickAmount());
 
-        // db state validations
         assertTrue(leaveDaysRepository.findById(SEEDED_LEAVE_SICK_ID).isEmpty(),
                 "Reason: the record must be gone from the database");
         assertEquals(recordCountBefore - 1, leaveDaysRepository.count(),
@@ -1120,7 +1094,6 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
                 "Reason: zero for both portions reports nothing just as omitting them does");
         assertEquals(String.format(LEAVE_DAY_NOTHING_REPORTED_MSG, freeDay), errorMessage(zeroed));
 
-        // db state validations
         assertEquals(recordCountBefore, leaveDaysRepository.count(),
                 "Reason: a refused report must not create any leave day");
     }
@@ -1138,7 +1111,6 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
                 "Reason: reporting nothing is refused rather than treated as a removal");
         assertEquals(String.format(LEAVE_DAY_NOTHING_REPORTED_MSG, day), errorMessage(response));
 
-        // db state validations
         verifyLeaveDayDbState(SEEDED_LEAVE_SPLIT_ID, day, 0.5, 0.5);
         assertEquals(recordCountBefore, leaveDaysRepository.count(),
                 "Reason: removing a leave day is leaveDayRemove's job, never a side effect of a report");
