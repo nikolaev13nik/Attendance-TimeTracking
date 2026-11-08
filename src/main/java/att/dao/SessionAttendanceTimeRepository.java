@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -84,6 +85,23 @@ public interface SessionAttendanceTimeRepository extends JpaRepository<DataTime,
             @Param("userId") Integer userId,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate);
+
+    @Query(value = "SELECT a.* FROM att_work_sessions a " +
+            "WHERE a.tenant_id = :tenantId " +
+            "AND a.user_id IN (:userIds) " +
+            "AND a.work_date BETWEEN :startDate AND :endDate " +
+            "AND EXISTS (SELECT 1 FROM att_work_sessions b " +
+            "WHERE b.tenant_id = a.tenant_id " +
+            "AND b.user_id = a.user_id " +
+            "AND b.work_date = a.work_date " +
+            "AND b.id > a.id " +
+            "AND a.open_session_date < b.close_session_date " +
+            "AND b.open_session_date < a.close_session_date)",
+            nativeQuery = true)
+    List<DataTime> findOverlappingSessions(@Param("tenantId") Integer tenantId,
+                                           @Param("userIds") Collection<Integer> userIds,
+                                           @Param("startDate") LocalDate startDate,
+                                           @Param("endDate") LocalDate endDate);
 
     @Query(value = "SELECT DISTINCT user_id FROM att_work_sessions WHERE tenant_id = :tenantId",
             nativeQuery = true)

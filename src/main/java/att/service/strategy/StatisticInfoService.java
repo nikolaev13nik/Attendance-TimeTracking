@@ -21,13 +21,16 @@ import att.context.StatisticInfoHolder;
 import att.dto.MonthlyUserStatisticInfoDto;
 import att.exceptions.BadRequestException;
 import att.mapper.MonthStatisticMapper;
+import att.model.DataTime;
 import att.model.LeaveDay;
 import att.model.MonthStatistic;
 
 import static att.exceptions.ErrorConstants.FULL_LEAVE_DAY_WITH_WORK_MSG;
 import static att.exceptions.ErrorConstants.INCOMPLETE_SESSIONS_MSG;
+import static att.exceptions.ErrorConstants.OVERLAPPING_SESSIONS_MSG;
 import static att.exceptions.ErrorConstants.REPORTER_UNRESOLVED_MSG;
 import static att.exceptions.ErrorProvider.fullLeaveDayWithWork;
+import static att.exceptions.ErrorProvider.overlappingSessions;
 import static att.service.AttUtility.FULL_DAY;
 import static att.service.AttUtility.amountOrZero;
 import static java.util.Objects.nonNull;
@@ -65,6 +68,7 @@ public class StatisticInfoService extends BaseGetService<Void> {
         context.setEndDate(monthEnd);
         context.getStatisticInfoHolder().setTargetUserIds(resolveTargetUserIds(context));
         fetchFullLeaveDaysWithWork(context);
+        fetchOverlappingSessions(context);
         resolveTargetUserProfiles(context);
         fetchReporterProfile(context);
     }
@@ -82,7 +86,13 @@ public class StatisticInfoService extends BaseGetService<Void> {
         });
         List<LeaveDay> fullLeaveDaysWithWork = context.getStatisticInfoHolder().getFullLeaveDaysWithWork();
         if (isNotEmpty(fullLeaveDaysWithWork)) {
-            fullLeaveDayWithWork(String.format(FULL_LEAVE_DAY_WITH_WORK_MSG, describeConflicts(fullLeaveDaysWithWork)));
+            fullLeaveDayWithWork(String.format(FULL_LEAVE_DAY_WITH_WORK_MSG,
+                    describeConflicts(fullLeaveDaysWithWork, LeaveDay::getIdUser, LeaveDay::getLeaveDate)));
+        }
+        List<DataTime> overlapping = context.getStatisticInfoHolder().getOverlappingSessions();
+        if (isNotEmpty(overlapping)) {
+            overlappingSessions(String.format(OVERLAPPING_SESSIONS_MSG,
+                    describeConflicts(overlapping, DataTime::getIdUser, DataTime::getWorkDate)));
         }
     }
 
@@ -137,10 +147,16 @@ public class StatisticInfoService extends BaseGetService<Void> {
                 .toList());
     }
 
-    private static String describeConflicts(List<LeaveDay> fullLeaveDaysWithWork) {
-        return fullLeaveDaysWithWork.stream()
-                .collect(groupingBy(LeaveDay::getIdUser, TreeMap::new,
-                        mapping(LeaveDay::getLeaveDate, toCollection(TreeSet::new))))
+    private void fetchOverlappingSessions(DataTimeContext<Void> context) {
+        StatisticInfoHolder holder = context.getStatisticInfoHolder();
+        holder.setOverlappingSessions(timeRepository.findOverlappingSessions(context.getTenantId(),
+                holder.getTargetUserIds(), context.getStartDate(), context.getEndDate()));
+    }
+
+    private static <T> String describeConflicts(List<T> conflicts, Function<T, Integer> user,
+                                                Function<T, LocalDate> date) {
+        return conflicts.stream()
+                .collect(groupingBy(user, TreeMap::new, mapping(date, toCollection(TreeSet::new))))
                 .entrySet().stream()
                 .map(entry -> String.format("user:%s %s", entry.getKey(), entry.getValue()))
                 .collect(joining("; "));

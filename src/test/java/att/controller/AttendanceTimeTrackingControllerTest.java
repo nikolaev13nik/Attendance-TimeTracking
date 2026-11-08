@@ -25,6 +25,7 @@ import att.model.LeaveDay;
 
 import static att.exceptions.ErrorConstants.ATTENDANCE_NOT_FOUND_MSG;
 import static att.exceptions.ErrorConstants.FULL_LEAVE_DAY_WITH_WORK_MSG;
+import static att.exceptions.ErrorConstants.OVERLAPPING_SESSIONS_MSG;
 import static att.exceptions.ErrorConstants.FUTURE_WORK_DATE_MSG;
 import static att.exceptions.ErrorConstants.INCOMPLETE_SESSIONS_MSG;
 import static att.exceptions.ErrorConstants.LEAVE_DAY_AMOUNT_EXCEEDS_FULL_DAY_MSG;
@@ -764,6 +765,117 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
                 errorMessage(tenantResponse));
         assertEquals(countBefore, monthStatisticRepository.count(),
                 "Reason: no statistic row should be persisted when the batch is rejected");
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("POST month statistic as admin - partly overlapping or nested sessions reject the request and name the dates")
+    void getMonthStatisticOverlappingSessionsTest() {
+        closeSeededOpenSession();
+        saveClosedSession(USER_ID, "2024-01-02", "2024-01-02T17:00:00Z", "2024-01-02T18:00:00Z");
+        saveClosedSession(USER_ID, "2024-01-03", "2024-01-03T10:00:00Z", "2024-01-03T11:00:00Z");
+        long countBefore = monthStatisticRepository.count();
+
+        ResponseEntity<String> response = sendRequestWithAdmin(HttpMethod.POST,
+                statistic(STATISTIC_URL, "2024-01", USER_ID), null, 2, null);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(String.format(OVERLAPPING_SESSIONS_MSG, "user:2 [2024-01-02, 2024-01-03]"),
+                errorMessage(response), "Reason: the message names every conflicting user and date");
+        assertEquals(countBefore, monthStatisticRepository.count(),
+                "Reason: no statistic row should be persisted for a rejected request");
+        verifyNoInteractions(statisticEventProducer);
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("POST month statistic as admin - a session starting when the previous one ends is not an overlap")
+    void getMonthStatisticAdjacentSessionsTest() {
+        closeSeededOpenSession();
+        saveClosedSession(USER_ID, "2024-01-02", "2024-01-02T17:30:00Z", "2024-01-02T18:00:00Z");
+
+        ResponseEntity<String> response = sendRequestWithAdmin(HttpMethod.POST,
+                statistic(STATISTIC_URL, "2024-01", USER_ID), null, 2, null);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode(),
+                "Reason: sessions that only touch do not count the same minutes twice");
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("POST month statistic as admin - different users working the same hours is not an overlap")
+    void getMonthStatisticSameHoursOtherUserTest() {
+        closeSeededOpenSession();
+        saveClosedSession(OTHER_USER_ID, "2024-01-02", "2024-01-02T09:00:00Z", "2024-01-02T17:30:00Z");
+
+        ResponseEntity<String> response = sendRequestWithAdmin(HttpMethod.POST,
+                statistic(STATISTIC_URL, "2024-01"), null, 2, null);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode(),
+                "Reason: overlap is checked per user, not across the tenant");
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("POST month statistic as admin - another user's overlap blocks the tenant-wide run only")
+    void getMonthStatisticOtherUserOverlapTest() {
+        closeSeededOpenSession();
+        saveClosedSession(OTHER_USER_ID, "2024-01-10", "2024-01-10T09:00:00Z", "2024-01-10T12:00:00Z");
+        saveClosedSession(OTHER_USER_ID, "2024-01-10", "2024-01-10T11:00:00Z", "2024-01-10T13:00:00Z");
+
+        ResponseEntity<String> singleUserResponse = sendRequestWithAdmin(HttpMethod.POST,
+                statistic(STATISTIC_URL, "2024-01", USER_ID), null, 2, null);
+        assertEquals(HttpStatus.OK, singleUserResponse.getStatusCode(),
+                "Reason: an overlap of another user must not block this user's statistic");
+
+        ResponseEntity<String> tenantResponse = sendRequestWithAdmin(HttpMethod.POST,
+                statistic(STATISTIC_URL, "2024-01"), null, 2, null);
+        assertEquals(HttpStatus.BAD_REQUEST, tenantResponse.getStatusCode());
+        assertEquals(String.format(OVERLAPPING_SESSIONS_MSG, "user:3 [2024-01-10]"),
+                errorMessage(tenantResponse), "Reason: the tenant-wide run covers the other user");
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("POST month statistic as admin - an overlap outside the requested month does not block it")
+    void getMonthStatisticOverlapInOtherMonthTest() {
+        closeSeededOpenSession();
+        saveClosedSession(USER_ID, "2024-02-05", "2024-02-05T09:00:00Z", "2024-02-05T12:00:00Z");
+        saveClosedSession(USER_ID, "2024-02-05", "2024-02-05T11:00:00Z", "2024-02-05T13:00:00Z");
+
+        ResponseEntity<String> response = sendRequestWithAdmin(HttpMethod.POST,
+                statistic(STATISTIC_URL, "2024-01", USER_ID), null, 2, null);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode(),
+                "Reason: only the requested month has to be clean");
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("POST month statistic as admin - a tenant with no records has nothing to reject")
+    void getMonthStatisticEmptyTenantTest() {
+        ResponseEntity<String> response = sendRequestWithAdmin(HttpMethod.POST,
+                statistic(STATISTIC_URL, "2024-01"), null, 999, null);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode(),
+                "Reason: the overlap check must cope with an empty list of target users");
+    }
+
+    private void closeSeededOpenSession() {
+        ResponseEntity<String> editResponse = sendRequestWithAdmin(HttpMethod.POST, EDIT_URL,
+                null, 2, createEditDataTimeUserDto(SEEDED_OPEN_ID, null,
+                        OffsetDateTime.parse("2024-01-04T17:30:00Z")));
+        assertEquals(HttpStatus.OK, editResponse.getStatusCode());
+    }
+
+    private void saveClosedSession(Integer idUser, String workDate, String open, String close) {
+        DataTime session = new DataTime();
+        session.setTenantId(2);
+        session.setIdUser(idUser);
+        session.setWorkDate(LocalDate.parse(workDate));
+        session.setOpenSessionDate(OffsetDateTime.parse(open));
+        session.setCloseSessionDate(OffsetDateTime.parse(close));
+        sessionAttendanceTimeRepository.save(session);
     }
 
     @Test

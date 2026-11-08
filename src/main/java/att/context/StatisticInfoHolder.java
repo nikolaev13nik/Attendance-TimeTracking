@@ -12,6 +12,7 @@ import java.util.Map;
 
 import att.client.accounting.dto.UserProfileDto;
 import att.dto.MonthlyUserStatisticInfoDto;
+import att.model.DataTime;
 import att.model.LeaveDay;
 import att.model.MonthStatistic;
 import lombok.Data;
@@ -23,6 +24,7 @@ public class StatisticInfoHolder {
     Map<Integer, UserProfileDto> targetUserProfiles = new HashMap<>();
     List<MonthStatistic> monthStatisticList = new ArrayList<>();
     List<LeaveDay> fullLeaveDaysWithWork = new ArrayList<>();
+    List<DataTime> overlappingSessions = new ArrayList<>();
     private OffsetDateTime startOfMonth;
     private Boolean report;
     private UserProfileDto reporterProfile;

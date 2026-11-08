@@ -23,6 +23,8 @@ public class ErrorConstants {
     public static final String FULL_LEAVE_DAY_WITH_WORK_MSG =
             "Full leave day and work hours are recorded on the same day, resolve them before computing " +
                     "the statistic: %s";
+    public static final String OVERLAPPING_SESSIONS_MSG =
+            "Sessions with overlapping times are recorded, resolve them before computing the statistic: %s";
     public static final String REPORTER_UNRESOLVED_MSG =
             "Reporting user cannot be resolved: the request carries no user id";
 

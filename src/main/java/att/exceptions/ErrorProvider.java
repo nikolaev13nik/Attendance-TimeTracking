@@ -29,4 +29,8 @@ public class ErrorProvider {
     public static void fullLeaveDayWithWork(String msg) {
         throw new BadRequestException(msg);
     }
+
+    public static void overlappingSessions(String msg) {
+        throw new BadRequestException(msg);
+    }
 }
