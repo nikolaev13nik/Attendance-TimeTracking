@@ -803,6 +803,38 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
 
     @Test
     @FlywayTest
+    @DisplayName("POST month statistic as admin - sessions apart only by seconds within one minute are not an overlap")
+    void getMonthStatisticSecondsWithinTouchingMinuteTest() {
+        closeSeededOpenSession();
+        saveClosedSession(USER_ID, "2024-01-02", "2024-01-02T17:30:20Z", "2024-01-02T18:00:00Z");
+
+        ResponseEntity<String> response = sendRequestWithAdmin(HttpMethod.POST,
+                statistic(STATISTIC_URL, "2024-01", USER_ID), null, 2, null);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode(),
+                "Reason: 17:30:00 and 17:30:20 are both shown as 17:30, so the sessions only touch");
+    }
+
+    @Test
+    @FlywayTest
+    @DisplayName("POST month statistic as admin - seconds are dropped from both ends of a session, as the GUI shows it")
+    void getMonthStatisticIgnoresSecondsTest() {
+        saveClosedSession(SECONDS_USER_ID, "2024-03-04", "2024-03-04T08:59:59Z", "2024-03-04T17:01:00Z");
+        saveClosedSession(SECONDS_USER_ID, "2024-03-05", "2024-03-05T09:00:50Z", "2024-03-05T09:01:20Z");
+
+        ResponseEntity<String> response = sendRequestWithAdmin(HttpMethod.POST,
+                statistic(STATISTIC_URL, "2024-03", SECONDS_USER_ID), null, 2, null);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        MonthlyUserStatisticInfoDto stat = readList(response, MonthlyUserStatisticInfoDto.class).get(0);
+        assertEquals(483 / 60.0, stat.getTotalWorkHours(), 1e-9,
+                "Reason: 08:59 to 17:01 is 482 minutes and 09:00 to 09:01 is one more, seconds are not counted");
+        assertEquals(2 / 60.0, stat.getOvertimeHours(), 1e-9,
+                "Reason: 482 minutes on one day is 2 minutes above the 8:00 threshold");
+    }
+
+    @Test
+    @FlywayTest
     @DisplayName("POST month statistic as admin - different users working the same hours is not an overlap")
     void getMonthStatisticSameHoursOtherUserTest() {
         closeSeededOpenSession();
@@ -860,6 +892,8 @@ class AttendanceTimeTrackingControllerTest extends BaseApiControllerTest {
         assertEquals(HttpStatus.OK, response.getStatusCode(),
                 "Reason: the overlap check must cope with an empty list of target users");
     }
+
+    private static final Integer SECONDS_USER_ID = 4;
 
     private void closeSeededOpenSession() {
         ResponseEntity<String> editResponse = sendRequestWithAdmin(HttpMethod.POST, EDIT_URL,

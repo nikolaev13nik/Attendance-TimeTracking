@@ -42,7 +42,8 @@ public interface SessionAttendanceTimeRepository extends JpaRepository<DataTime,
 
     @Query(value =
             "SELECT COALESCE(SUM(day_minutes - :thresholdMinutes), 0) " +
-                    "FROM (SELECT SUM(EXTRACT(EPOCH FROM (close_session_date - open_session_date)) / 60) AS day_minutes " +
+                    "FROM (SELECT SUM(EXTRACT(EPOCH FROM (DATE_TRUNC('minute', close_session_date) - " +
+                    "DATE_TRUNC('minute', open_session_date))) / 60) AS day_minutes " +
                     "FROM att_work_sessions " +
                     "WHERE tenant_id = :tenantId " +
                     "AND user_id = :userId " +
@@ -72,7 +73,8 @@ public interface SessionAttendanceTimeRepository extends JpaRepository<DataTime,
                                                   @Param("endDate") LocalDate endDate);
 
     @Query(value =
-            "SELECT COALESCE(SUM(EXTRACT(EPOCH FROM (close_session_date - open_session_date)) / 60), 0) " +
+            "SELECT COALESCE(SUM(EXTRACT(EPOCH FROM (DATE_TRUNC('minute', close_session_date) - " +
+                    "DATE_TRUNC('minute', open_session_date))) / 60), 0) " +
                     "FROM att_work_sessions " +
                     "WHERE tenant_id = :tenantId " +
                     "AND user_id = :userId " +
@@ -95,8 +97,8 @@ public interface SessionAttendanceTimeRepository extends JpaRepository<DataTime,
             "AND b.user_id = a.user_id " +
             "AND b.work_date = a.work_date " +
             "AND b.id > a.id " +
-            "AND a.open_session_date < b.close_session_date " +
-            "AND b.open_session_date < a.close_session_date)",
+            "AND DATE_TRUNC('minute', a.open_session_date) < DATE_TRUNC('minute', b.close_session_date) " +
+            "AND DATE_TRUNC('minute', b.open_session_date) < DATE_TRUNC('minute', a.close_session_date))",
             nativeQuery = true)
     List<DataTime> findOverlappingSessions(@Param("tenantId") Integer tenantId,
                                            @Param("userIds") Collection<Integer> userIds,
