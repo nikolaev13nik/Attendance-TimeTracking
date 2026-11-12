@@ -24,6 +24,8 @@ spring:
           enable-observation: true
           replication-factor: 1
           min-partition-count: 6
+          metrics:
+            default-offset-lag-metrics-enabled: false
         bindings:
           monthStatisticEnrichment-in-0:
             consumer:
